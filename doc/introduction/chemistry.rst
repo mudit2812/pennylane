@@ -119,22 +119,6 @@ Quantum chemistry functions and classes
 
 PennyLane supports the following quantum chemistry functions and classes.
 
-Molecule class and basis functions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-:html:`<div class="summary-table">`
-
-.. autosummary::
-    :nosignatures:
-
-    ~pennylane.qchem.Molecule
-    ~pennylane.qchem.BasisFunction
-    ~pennylane.qchem.atom_basis_data
-    ~pennylane.qchem.mol_basis_data
-
-:html:`</div>`
-
-
 Molecular integrals and matrices
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -221,6 +205,7 @@ Differentiable observables
     ~pennylane.qchem.fermionic_hamiltonian
     ~pennylane.qchem.fermionic_observable
     ~pennylane.qchem.jordan_wigner
+    ~pennylane.qchem.molecular_hamiltonian
     ~pennylane.qchem.observable
     ~pennylane.qchem.qubit_observable
     ~pennylane.qchem.simplify
@@ -238,10 +223,24 @@ non-Differentiable observables
     :nosignatures:
 
     ~pennylane.qchem.dipole_of
+    ~pennylane.qchem.molecular_hamiltonian
 
 
 :html:`</div>`
 
+Other observables
+^^^^^^^^^^^^^^^^^
+
+:html:`<div class="summary-table">`
+
+.. autosummary::
+    :nosignatures:
+
+    ~pennylane.qchem.particle_number
+    ~pennylane.qchem.spin2
+    ~pennylane.qchem.spinz
+
+:html:`</div>`
 
 Qubit tapering
 ^^^^^^^^^^^^^^
@@ -261,24 +260,8 @@ Qubit tapering
 
 :html:`</div>`
 
-
-Other observables
+Utility functions
 ^^^^^^^^^^^^^^^^^
-
-:html:`<div class="summary-table">`
-
-.. autosummary::
-    :nosignatures:
-
-    ~pennylane.qchem.particle_number
-    ~pennylane.qchem.spin2
-    ~pennylane.qchem.spinz
-
-:html:`</div>`
-
-
-Other functions
-^^^^^^^^^^^^^^^
 
 :html:`<div class="summary-table">`
 
@@ -290,8 +273,22 @@ Other functions
     ~pennylane.qchem.excitations
     ~pennylane.qchem.excitations_to_wires
     ~pennylane.qchem.hf_state
-    ~pennylane.qchem.molecular_hamiltonian
     ~pennylane.qchem.read_structure
 
+
+:html:`</div>`
+
+Molecule class and basis functions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+:html:`<div class="summary-table">`
+
+.. autosummary::
+    :nosignatures:
+
+    ~pennylane.qchem.Molecule
+    ~pennylane.qchem.BasisFunction
+    ~pennylane.qchem.atom_basis_data
+    ~pennylane.qchem.mol_basis_data
 
 :html:`</div>`
