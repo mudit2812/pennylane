@@ -476,14 +476,14 @@ class TX(Operation):
 
         if len(subspace) != 2:
             raise ValueError(
-                "subspace must be a sequence with 2 unique elements from the set {0, 1, 2}"
+                "TX: subspace must be a sequence with two unique elements from the set {0, 1, 2}."
             )
 
         if subspace[0] == subspace[1]:
             raise ValueError("Elements of subspace list must be unique.")
 
         if not all([s in {0, 1, 2} for s in subspace]):
-            raise ValueError("Subspace elements should be 0, 1, or 2.")
+            raise ValueError("Elements of the subspace must be 0, 1, or 2.")
 
         subspace = tuple(sorted(subspace))
 
@@ -495,3 +495,11 @@ class TX(Operation):
         mat[unused_ind, unused_ind] = 1
 
         return mat
+
+    def adjoint(self):
+        return TX(wires=self.wires, subspace=self.subspace)
+
+    def pow(self, z):
+        return super().pow(z % 2)
+
+    # TODO: Add _controlled() method once TCNOT is added
