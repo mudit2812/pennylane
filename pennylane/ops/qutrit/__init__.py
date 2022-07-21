@@ -39,6 +39,8 @@ ops = {
     "TRY",
     "TRZ",
     "TX",
+    "TY",
+    "TZ",
 }
 
 # TODO: Remove QutritUnitary from obs list

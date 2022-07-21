@@ -63,6 +63,8 @@ class DefaultQutrit(QutritDevice):
         "TRY",
         "TRZ",
         "TX",
+        "TY",
+        "TZ",
     }
 
     observables = {

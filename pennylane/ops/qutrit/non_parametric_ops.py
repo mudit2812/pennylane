@@ -420,10 +420,19 @@ class TX(Operation):
     applies to:
 
     >>> qml.TX(wires=0, subspace=[0, 1]).matrix()
+    array([[0., 1., 0.],
+           [1., 0., 0.],
+           [0., 0., 1.]])
 
     >>> qml.TX(wires=0, subspace=[0, 2]).matrix()
+    array([[0., 0., 1.],
+           [0., 1., 0.],
+           [1., 0., 0.]])
 
     >>> qml.TX(wires=0, subspace=[1, 2]).matrix()
+    array([[1., 0., 0.],
+           [0., 0., 1.],
+           [0., 1., 0.]])
     """
     num_wires = 1
     num_params = 0
@@ -469,14 +478,14 @@ class TX(Operation):
         **Example**
 
         >>> print(qml.TX.compute_matrix(subspace=[0, 2]))
-        [[0 0 1]
-         [0 1 0]
-         [1 0 0]]
+        array([[0., 0., 1.],
+               [0., 1., 0.],
+               [1., 0., 0.]])
         """
 
         if len(subspace) != 2:
             raise ValueError(
-                "TX: subspace must be a sequence with two unique elements from the set {0, 1, 2}."
+                "The subspace must be a sequence with two unique elements from the set {0, 1, 2}."
             )
 
         if subspace[0] == subspace[1]:
@@ -489,7 +498,7 @@ class TX(Operation):
 
         mat = np.zeros((3, 3))
 
-        unused_ind = int({0, 1, 2}.difference(set(subspace)))
+        unused_ind = list({0, 1, 2}.difference(set(subspace))).pop()
         mat[subspace[0], subspace[1]] = 1
         mat[subspace[1], subspace[0]] = 1
         mat[unused_ind, unused_ind] = 1
@@ -500,6 +509,247 @@ class TX(Operation):
         return TX(wires=self.wires, subspace=self.subspace)
 
     def pow(self, z):
+        if not isinstance(z, int):
+            return super().pow(z)
+
         return super().pow(z % 2)
 
     # TODO: Add _controlled() method once TCNOT is added
+
+
+class TY(Operation):
+    r"""TY(wires, subspace)
+    Ternary Y operation
+
+    Performs the Pauli Y operation on the specified 2D subspace. The subspace is
+    given as a keyword argument and determines which two of three single-qutrit
+    basis states the operation applies to.
+
+    **Details:**
+
+    * Number of wires: 1
+    * Number of parameters: 0
+
+    Args:
+        wires (Sequence[int] or int): the wire the operation acts on
+        subspace (Sequence[int]): the 2D subspace on which to apply operation
+        do_queue (bool): Indicates whether the operator should be
+            immediately pushed into the Operator queue (optional)
+
+    **Example**
+
+    The specified subspace will determine which basis states the operation actually
+    applies to:
+
+    >>> qml.TY(wires=0, subspace=[0, 1]).matrix()
+    array([[ 0.+0.j, -0.-1.j,  0.+0.j],
+           [ 0.+1.j,  0.+0.j,  0.+0.j],
+           [ 0.+0.j,  0.+0.j,  1.+0.j]])
+
+    >>> qml.TY(wires=0, subspace=[0, 2]).matrix()
+    array([[ 0.+0.j,  0.+0.j, -0.-1.j],
+           [ 0.+0.j,  1.+0.j,  0.+0.j],
+           [ 0.+1.j,  0.+0.j,  0.+0.j]])
+
+    >>> qml.TY(wires=0, subspace=[1, 2]).matrix()
+    array([[ 1.+0.j,  0.+0.j,  0.+0.j],
+           [ 0.+0.j,  0.+0.j, -0.-1.j],
+           [ 0.+0.j,  0.+1.j,  0.+0.j]])
+    """
+    num_wires = 1
+    num_params = 0
+    """int: Number of trainable parameters that the operator depends on."""
+
+    def label(self, decimals=None, base_label=None, cache=None):
+        return base_label or "TY"
+
+    def __init__(
+        self, wires, subspace=[0, 1], do_queue=True
+    ):  # pylint: disable=dangerous-default-value
+        self._subspace = subspace
+        self._hyperparameters = {
+            "subspace": self.subspace,
+        }
+        super().__init__(wires=wires, do_queue=do_queue)
+
+    @property
+    def subspace(self):
+        """The single-qutrit basis states which the operator acts on
+
+        This property returns the 2D subspace on which the operator acts. This subspace
+        determines which two single-qutrit basis states the operator acts on. The remaining
+        basis state is not affected by the operator.
+
+        Returns:
+            tuple[int]: subspace on which operator acts
+        """
+        return tuple(sorted(self._subspace))
+
+    @staticmethod
+    def compute_matrix(subspace=[0, 1]):  # pylint: disable=arguments-differ
+        r"""Representation of the operator as a canonical matrix in the computational basis (static method).
+
+        The canonical matrix is the textbook matrix representation that does not consider wires.
+        Implicitly, this assumes that the wires of the operator correspond to the global wire order.
+
+        .. seealso:: :meth:`~.TY.matrix`
+
+        Returns:
+            ndarray: matrix
+
+        **Example**
+
+        >>> print(qml.TY.compute_matrix(subspace=[0, 2]))
+        array([[ 0.+0.j,  0.+0.j, -0.-1.j],
+               [ 0.+0.j,  1.+0.j,  0.+0.j],
+               [ 0.+1.j,  0.+0.j,  0.+0.j]])
+        """
+
+        if len(subspace) != 2:
+            raise ValueError(
+                "The subspace must be a sequence with two unique elements from the set {0, 1, 2}."
+            )
+
+        if subspace[0] == subspace[1]:
+            raise ValueError("Elements of subspace list must be unique.")
+
+        if not all([s in {0, 1, 2} for s in subspace]):
+            raise ValueError("Elements of the subspace must be 0, 1, or 2.")
+
+        subspace = tuple(sorted(subspace))
+
+        mat = np.zeros((3, 3), dtype=np.complex128)
+
+        unused_ind = list({0, 1, 2}.difference(set(subspace))).pop()
+        mat[subspace[0], subspace[1]] = -1j
+        mat[subspace[1], subspace[0]] = 1j
+        mat[unused_ind, unused_ind] = 1
+
+        return mat
+
+    def adjoint(self):
+        return TY(wires=self.wires, subspace=self.subspace)
+
+    def pow(self, z):
+        if not isinstance(z, int):
+            return super().pow(z)
+
+        return super().pow(z % 2)
+
+
+class TZ(Operation):
+    r"""TZ(wires, subspace)
+    Ternary Z operation
+
+    Performs the Pauli Z operation on the specified 2D subspace. The subspace is
+    given as a keyword argument and determines which two of three single-qutrit
+    basis states the operation applies to. The second element of the subspace will
+    determine which basis state the local -1 phase applies to
+
+    **Details:**
+
+    * Number of wires: 1
+    * Number of parameters: 0
+
+    Args:
+        wires (Sequence[int] or int): the wire the operation acts on
+        subspace (Sequence[int]): the 2D subspace on which to apply operation
+        do_queue (bool): Indicates whether the operator should be
+            immediately pushed into the Operator queue (optional)
+
+    **Example**
+
+    The specified subspace will determine which basis states the operation actually
+    applies to, with the second element of the subspace determining which basis state
+    the local -1 phase applies to:
+
+    >>> qml.TZ(wires=0, subspace=[0, 1]).matrix()
+    array([[ 1.,  0.,  0.],
+           [ 0., -1.,  0.],
+           [ 0.,  0.,  1.]])
+
+    >>> qml.TZ(wires=0, subspace=[1, 0]).matrix()
+    array([[-1.,  0.,  0.],
+           [ 0.,  1.,  0.],
+           [ 0.,  0.,  1.]])
+
+    >>> qml.TZ(wires=0, subspace=[2, 1]).matrix()
+    array([[ 1.,  0.,  0.],
+           [ 0., -1.,  0.],
+           [ 0.,  0.,  1.]])
+    """
+    num_wires = 1
+    num_params = 0
+    """int: Number of trainable parameters that the operator depends on."""
+
+    def label(self, decimals=None, base_label=None, cache=None):
+        return base_label or "TZ"
+
+    def __init__(
+        self, wires, subspace=[0, 1], do_queue=True
+    ):  # pylint: disable=dangerous-default-value
+        self._subspace = subspace
+        self._hyperparameters = {
+            "subspace": self.subspace,
+        }
+        super().__init__(wires=wires, do_queue=do_queue)
+
+    @property
+    def subspace(self):
+        """The single-qutrit basis states which the operator acts on
+
+        This property returns the 2D subspace on which the operator acts. This subspace
+        determines which two single-qutrit basis states the operator acts on. The remaining
+        basis state is not affected by the operator.
+
+        Returns:
+            tuple[int]: subspace on which operator acts
+        """
+        return tuple(self._subspace)
+
+    @staticmethod
+    def compute_matrix(subspace=[0, 1]):  # pylint: disable=arguments-differ
+        r"""Representation of the operator as a canonical matrix in the computational basis (static method).
+
+        The canonical matrix is the textbook matrix representation that does not consider wires.
+        Implicitly, this assumes that the wires of the operator correspond to the global wire order.
+
+        .. seealso:: :meth:`~.TZ.matrix`
+
+        Returns:
+            ndarray: matrix
+
+        **Example**
+
+        >>> print(qml.TZ.compute_matrix(subspace=[0, 2]))
+        array([[ 1.,  0.,  0.],
+               [ 0.,  1.,  0.],
+               [ 0.,  0., -1.]])
+        """
+
+        if len(subspace) != 2:
+            raise ValueError(
+                "The subspace must be a sequence with two unique elements from the set {0, 1, 2}."
+            )
+
+        if subspace[0] == subspace[1]:
+            raise ValueError("Elements of subspace list must be unique.")
+
+        if not all([s in {0, 1, 2} for s in subspace]):
+            raise ValueError("Elements of the subspace must be 0, 1, or 2.")
+
+        subspace = tuple(subspace)
+
+        mat = np.eye(3)
+        mat[subspace[1], subspace[1]] = -1
+
+        return mat
+
+    def adjoint(self):
+        return TZ(wires=self.wires, subspace=self.subspace)
+
+    def pow(self, z):
+        if not isinstance(z, int):
+            return super().pow(z)
+
+        return super().pow(z % 2)
