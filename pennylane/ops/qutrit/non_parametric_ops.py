@@ -393,3 +393,105 @@ class TSWAP(Operation):
 
     def adjoint(self):
         return TSWAP(wires=self.wires)
+
+
+class TX(Operation):
+    r"""TX(wires, subspace)
+    Ternary X operation
+
+    Performs the Pauli X operation on the specified 2D subspace. The subspace is
+    given as a keyword argument and determines which two of three single-qutrit
+    basis states the operation applies to.
+
+    **Details:**
+
+    * Number of wires: 1
+    * Number of parameters: 0
+
+    Args:
+        wires (Sequence[int] or int): the wire the operation acts on
+        subspace (Sequence[int]): the 2D subspace on which to apply operation
+        do_queue (bool): Indicates whether the operator should be
+            immediately pushed into the Operator queue (optional)
+
+    **Example**
+
+    The specified subspace will determine which basis states the operation actually
+    applies to:
+
+    >>> qml.TX(wires=0, subspace=[0, 1]).matrix()
+
+    >>> qml.TX(wires=0, subspace=[0, 2]).matrix()
+
+    >>> qml.TX(wires=0, subspace=[1, 2]).matrix()
+    """
+    num_wires = 1
+    num_params = 0
+    """int: Number of trainable parameters that the operator depends on."""
+
+    def label(self, decimals=None, base_label=None, cache=None):
+        return base_label or "TX"
+
+    def __init__(
+        self, wires, subspace=[0, 1], do_queue=True
+    ):  # pylint: disable=dangerous-default-value
+        self._subspace = subspace
+        self._hyperparameters = {
+            "subspace": self.subspace,
+        }
+        super().__init__(wires=wires, do_queue=do_queue)
+
+    @property
+    def subspace(self):
+        """The single-qutrit basis states which the operator acts on
+
+        This property returns the 2D subspace on which the operator acts. This subspace
+        determines which two single-qutrit basis states the operator acts on. The remaining
+        basis state is not affected by the operator.
+
+        Returns:
+            tuple[int]: subspace on which operator acts
+        """
+        return tuple(sorted(self._subspace))
+
+    @staticmethod
+    def compute_matrix(subspace=[0, 1]):  # pylint: disable=arguments-differ
+        r"""Representation of the operator as a canonical matrix in the computational basis (static method).
+
+        The canonical matrix is the textbook matrix representation that does not consider wires.
+        Implicitly, this assumes that the wires of the operator correspond to the global wire order.
+
+        .. seealso:: :meth:`~.TX.matrix`
+
+        Returns:
+            ndarray: matrix
+
+        **Example**
+
+        >>> print(qml.TX.compute_matrix(subspace=[0, 2]))
+        [[0 0 1]
+         [0 1 0]
+         [1 0 0]]
+        """
+
+        if len(subspace) != 2:
+            raise ValueError(
+                "subspace must be a sequence with 2 unique elements from the set {0, 1, 2}"
+            )
+
+        if subspace[0] == subspace[1]:
+            raise ValueError("Elements of subspace list must be unique.")
+
+        if not all([s in {0, 1, 2} for s in subspace]):
+            raise ValueError("Subspace elements should be 0, 1, or 2.")
+
+        subspace = tuple(sorted(subspace))
+
+        mat = np.zeros((3, 3))
+
+        unused_ind = int({0, 1, 2}.difference(set(subspace)))
+        mat[subspace[0], subspace[1]] = 1
+        mat[subspace[1], subspace[0]] = 1
+        mat[unused_ind, unused_ind] = 1
+
+        return mat
