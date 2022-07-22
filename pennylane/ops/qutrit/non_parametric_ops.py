@@ -444,6 +444,11 @@ class TX(Operation):
     def __init__(
         self, wires, subspace=[0, 1], do_queue=True
     ):  # pylint: disable=dangerous-default-value
+        if not hasattr(subspace, "__iter__"):
+            raise ValueError(
+                "The subspace must be a sequence with two unique elements from the set {0, 1, 2}."
+            )
+
         self._subspace = subspace
         self._hyperparameters = {
             "subspace": self.subspace,
@@ -483,16 +488,16 @@ class TX(Operation):
                [1., 0., 0.]])
         """
 
-        if len(subspace) != 2:
+        if not hasattr(subspace, "__iter__") or len(subspace) != 2:
             raise ValueError(
                 "The subspace must be a sequence with two unique elements from the set {0, 1, 2}."
             )
 
-        if subspace[0] == subspace[1]:
-            raise ValueError("Elements of subspace list must be unique.")
-
         if not all([s in {0, 1, 2} for s in subspace]):
             raise ValueError("Elements of the subspace must be 0, 1, or 2.")
+
+        if subspace[0] == subspace[1]:
+            raise ValueError("Elements of subspace list must be unique.")
 
         subspace = tuple(sorted(subspace))
 
@@ -566,6 +571,11 @@ class TY(Operation):
     def __init__(
         self, wires, subspace=[0, 1], do_queue=True
     ):  # pylint: disable=dangerous-default-value
+        if not hasattr(subspace, "__iter__"):
+            raise ValueError(
+                "The subspace must be a sequence with two unique elements from the set {0, 1, 2}."
+            )
+
         self._subspace = subspace
         self._hyperparameters = {
             "subspace": self.subspace,
@@ -605,16 +615,16 @@ class TY(Operation):
                [ 0.+1.j,  0.+0.j,  0.+0.j]])
         """
 
-        if len(subspace) != 2:
+        if not hasattr(subspace, "__iter__") or len(subspace) != 2:
             raise ValueError(
                 "The subspace must be a sequence with two unique elements from the set {0, 1, 2}."
             )
 
-        if subspace[0] == subspace[1]:
-            raise ValueError("Elements of subspace list must be unique.")
-
         if not all([s in {0, 1, 2} for s in subspace]):
             raise ValueError("Elements of the subspace must be 0, 1, or 2.")
+
+        if subspace[0] == subspace[1]:
+            raise ValueError("Elements of subspace list must be unique.")
 
         subspace = tuple(sorted(subspace))
 
@@ -688,6 +698,11 @@ class TZ(Operation):
     def __init__(
         self, wires, subspace=[0, 1], do_queue=True
     ):  # pylint: disable=dangerous-default-value
+        if not hasattr(subspace, "__iter__"):
+            raise ValueError(
+                "The subspace must be a sequence with two unique elements from the set {0, 1, 2}."
+            )
+
         self._subspace = subspace
         self._hyperparameters = {
             "subspace": self.subspace,
@@ -727,16 +742,16 @@ class TZ(Operation):
                [ 0.,  0., -1.]])
         """
 
-        if len(subspace) != 2:
+        if not hasattr(subspace, "__iter__") or len(subspace) != 2:
             raise ValueError(
                 "The subspace must be a sequence with two unique elements from the set {0, 1, 2}."
             )
 
-        if subspace[0] == subspace[1]:
-            raise ValueError("Elements of subspace list must be unique.")
-
         if not all([s in {0, 1, 2} for s in subspace]):
             raise ValueError("Elements of the subspace must be 0, 1, or 2.")
+
+        if subspace[0] == subspace[1]:
+            raise ValueError("Elements of subspace list must be unique.")
 
         subspace = tuple(subspace)
 
