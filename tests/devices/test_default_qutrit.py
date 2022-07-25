@@ -86,6 +86,22 @@ class TestApply:
         ),
         (qml.TClock, [1, 0, 0], np.array([1, 0, 0]), None),
         (qml.TClock, [0, 1, 0], np.array([0, OMEGA, 0]), None),
+        (qml.TX, [0, 1, 0], np.array([0, 1, 0]), [0, 2]),
+        (qml.TX, [1, 0, 0], np.array([0, 1, 0]), [0, 1]),
+        (
+            qml.TY,
+            [1 / np.sqrt(2), 1 / np.sqrt(2), 0],
+            np.array([1 / np.sqrt(2), 0, 1j / np.sqrt(2)]),
+            [1, 2],
+        ),
+        (qml.TY, [-1j, 0, 0], np.array([0, 0, 1]), [0, 2]),
+        (
+            qml.TZ,
+            [1 / np.sqrt(3)] * 3,
+            np.array([-1 / np.sqrt(3), 1 / np.sqrt(3), 1 / np.sqrt(3)]),
+            [2, 0],
+        ),
+        (qml.TZ, [0, 0, 1], np.array([0, 0, -1]), [1, 2]),
     ]
 
     test_data_no_parameters_inverses = [
@@ -98,6 +114,22 @@ class TestApply:
         ),
         (qml.TClock, [1, 0, 0], np.array([1, 0, 0]), None),
         (qml.TClock, [0, OMEGA, 0], np.array([0, 1, 0]), None),
+        (qml.TX, [0, 1, 0], np.array([0, 1, 0]), [0, 2]),
+        (qml.TX, [1, 0, 0], np.array([0, 1, 0]), [0, 1]),
+        (
+            qml.TY,
+            [1 / np.sqrt(2), 1 / np.sqrt(2), 0],
+            np.array([1 / np.sqrt(2), 0, 1j / np.sqrt(2)]),
+            [1, 2],
+        ),
+        (qml.TY, [-1j, 0, 0], np.array([0, 0, 1]), [0, 2]),
+        (
+            qml.TZ,
+            [1 / np.sqrt(3)] * 3,
+            np.array([-1 / np.sqrt(3), 1 / np.sqrt(3), 1 / np.sqrt(3)]),
+            [2, 0],
+        ),
+        (qml.TZ, [0, 0, 1], np.array([0, 0, -1]), [1, 2]),
     ]
 
     @pytest.mark.parametrize("operation, input, expected_output, subspace", test_data_no_parameters)
