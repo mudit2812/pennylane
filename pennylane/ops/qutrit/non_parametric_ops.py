@@ -477,6 +477,9 @@ class TX(Operation):
 
         .. seealso:: :meth:`~.TX.matrix`
 
+        Args:
+            subspace (Sequence[int]): the 2D subspace on which to apply operation
+
         Returns:
             ndarray: matrix
 
@@ -488,7 +491,7 @@ class TX(Operation):
                [1., 0., 0.]])
         """
 
-        if not hasattr(subspace, "__iter__") or len(subspace) != 2:
+        if len(subspace) != 2:
             raise ValueError(
                 "The subspace must be a sequence with two unique elements from the set {0, 1, 2}."
             )
@@ -604,6 +607,9 @@ class TY(Operation):
 
         .. seealso:: :meth:`~.TY.matrix`
 
+        Args:
+            subspace (Sequence[int]): the 2D subspace on which to apply operation
+
         Returns:
             ndarray: matrix
 
@@ -615,7 +621,7 @@ class TY(Operation):
                [ 0.+1.j,  0.+0.j,  0.+0.j]])
         """
 
-        if not hasattr(subspace, "__iter__") or len(subspace) != 2:
+        if len(subspace) != 2:
             raise ValueError(
                 "The subspace must be a sequence with two unique elements from the set {0, 1, 2}."
             )
@@ -731,6 +737,9 @@ class TZ(Operation):
 
         .. seealso:: :meth:`~.TZ.matrix`
 
+        Args:
+            subspace (Sequence[int]): the 2D subspace on which to apply operation
+
         Returns:
             ndarray: matrix
 
@@ -742,7 +751,7 @@ class TZ(Operation):
                [ 0.,  0., -1.]])
         """
 
-        if not hasattr(subspace, "__iter__") or len(subspace) != 2:
+        if len(subspace) != 2:
             raise ValueError(
                 "The subspace must be a sequence with two unique elements from the set {0, 1, 2}."
             )
