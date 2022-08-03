@@ -23,7 +23,7 @@ import pennylane as qml
 from pennylane.wires import Wires
 from tests.ops.qubit.test_non_parametric_ops import NON_PARAMETRIZED_OPERATIONS
 
-from gate_data import TSHIFT, TCLOCK
+from gate_data import TSHIFT, TCLOCK, TT, TS
 
 NON_PARAMETRIZED_OPERATIONS = [
     (qml.TShift, TSHIFT, None),
@@ -40,6 +40,11 @@ NON_PARAMETRIZED_OPERATIONS = [
     (qml.TZ, np.diag([-1, 1, 1]), [1, 0]),
     (qml.TZ, np.diag([-1, 1, 1]), [2, 0]),
     (qml.TZ, np.diag([1, -1, 1]), [2, 1]),
+    (qml.TH, np.array([[1, 1, 0], [1, -1, 0], [0, 0, 1]]), [0, 1]),
+    (qml.TH, np.array([[1, 0, 1], [0, 1, 0], [1, 0, -1]]), [0, 2]),
+    (qml.TH, np.array([[1, 0, 0], [0, 1, 1], [0, 1, -1]]), [1, 2]),
+    (qml.TS, TS, None),
+    (qml.TT, TT, None),
 ]
 
 subspace_error_data = [
@@ -87,7 +92,7 @@ class TestOperations:
         assert np.allclose(res_dynamic, mat, atol=tol, rtol=0)
 
     @pytest.mark.parametrize("subspace, err_msg", subspace_error_data)
-    @pytest.mark.parametrize("op_cls", [qml.TX, qml.TY, qml.TZ])
+    @pytest.mark.parametrize("op_cls", [qml.TX, qml.TY, qml.TZ, qml.TH])
     def test_subspace_op_errors(self, op_cls, subspace, err_msg):
         """Test that the correct errors are raised when subspace is incorrectly defined"""
 
@@ -142,6 +147,14 @@ period_two_ops = [
     qml.TZ(wires=0, subspace=[2, 0]),
     qml.TZ(wires=0, subspace=[2, 1]),
     qml.TSWAP(wires=[0, 1]),
+    qml.TH(wires=0, subspace=[0, 1]),
+    qml.TH(wires=0, subspace=[0, 2]),
+    qml.TH(wires=0, subspace=[1, 2]),
+]
+
+no_pow_method_ops = [
+    qml.TS(wires=0),
+    qml.TT(wires=0),
 ]
 
 
@@ -182,6 +195,20 @@ class TestPowMethod:
         assert len(op.pow(0 + offset)) == 0
         assert op.pow(1 + offset)[0].__class__ is op.__class__
 
+    @pytest.mark.parametrize("op", no_pow_method_ops)
+    def test_no_pow_ops(self, op):
+        assert len(op.pow(0)) == 0
+
+        op_pow = op.pow(1)
+        assert len(op_pow) == 1
+        assert op_pow[0].__class__ == op.__class__
+
+        pows = [0.1, 2, -2, -2.5]
+
+        for pow in pows:
+            with pytest.raises(qml.operation.PowUndefinedError):
+                op.pow(pow)
+
 
 label_data = [
     (qml.TShift(0), "TShift", "TShift⁻¹"),
@@ -191,6 +218,9 @@ label_data = [
     (qml.TX(wires=0), "TX", "TX"),
     (qml.TY(wires=0), "TY", "TY"),
     (qml.TZ(wires=0), "TZ", "TZ"),
+    (qml.TH(wires=0), "TH", "TH"),
+    (qml.TS(wires=0), "TS", "TS⁻¹"),
+    (qml.TT(wires=0), "TT", "TT⁻¹"),
 ]
 
 
@@ -211,6 +241,9 @@ control_data = [
     (qml.TX(wires=0), Wires([])),
     (qml.TY(wires=0), Wires([])),
     (qml.TZ(wires=0), Wires([])),
+    (qml.TH(wires=0), Wires([])),
+    (qml.TS(wires=0), Wires([])),
+    (qml.TT(wires=0), Wires([])),
 ]
 
 
@@ -238,6 +271,9 @@ involution_ops = [
     qml.TZ(wires=0, subspace=[0, 1]),
     qml.TZ(wires=0, subspace=[0, 2]),
     qml.TZ(wires=0, subspace=[1, 0]),
+    qml.TH(wires=0, subspace=[0, 1]),
+    qml.TH(wires=0, subspace=[0, 2]),
+    qml.TH(wires=0, subspace=[1, 2]),
 ]  # ops that are their own inverses
 
 

@@ -41,6 +41,9 @@ ops = {
     "TX",
     "TY",
     "TZ",
+    "TH",
+    "TS",
+    "TT",
 }
 
 obs = {

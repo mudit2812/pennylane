@@ -777,3 +777,222 @@ class TZ(Operation):
             return super().pow(z)
 
         return super().pow(z % 2)
+
+
+class TH(Operation):
+    r"""TH(wires, subspace)
+    The ternary Hadamard operator
+
+    Performs the Hadamard operation on the specified 2D subspace. The subspace is
+    given as a keyword argument and determines which two of three single-qutrit
+    basis states the operation applies to.
+
+    **Details:**
+
+    * Number of wires: 1
+    * Number of parameters: 0
+
+    Args:
+        wires (Sequence[int] or int): the wire the operation acts on
+        subspace (Sequence[int]): the 2D subspace on which to apply operation
+        do_queue (bool): Indicates whether the operator should be
+            immediately pushed into the Operator queue (optional)
+
+    **Example**
+
+    The specified subspace will determine which basis states the operation actually
+    applies to:
+
+    >>> qml.TH(wires=0, subspace=[0, 1]).matrix()
+    array([[ 1.,  1.,  0.],
+           [ 1., -1.,  0.],
+           [ 0.,  0.,  1.]])
+
+    >>> qml.TH(wires=0, subspace=[0, 2]).matrix()
+    array([[ 1.,  0.,  1.],
+           [ 0.,  1.,  0.],
+           [ 1.,  0., -1.]])
+
+    >>> qml.TH(wires=0, subspace=[1, 2]).matrix()
+    array([[ 1.,  0.,  0.],
+           [ 0.,  1.,  1.],
+           [ 0.,  1., -1.]])
+    """
+    num_wires = 1
+    num_params = 0
+    """int: Number of trainable parameters that the operator depends on."""
+
+    def label(self, decimals=None, base_label=None, cache=None):
+        return base_label or "TH"
+
+    def __init__(
+        self, wires, subspace=[0, 1], do_queue=True
+    ):  # pylint: disable=dangerous-default-value
+        if not hasattr(subspace, "__iter__"):
+            raise ValueError(
+                "The subspace must be a sequence with two unique elements from the set {0, 1, 2}."
+            )
+
+        self._subspace = subspace
+        self._hyperparameters = {
+            "subspace": self.subspace,
+        }
+        super().__init__(wires=wires, do_queue=do_queue)
+
+    @property
+    def subspace(self):
+        """The single-qutrit basis states which the operator acts on
+
+        This property returns the 2D subspace on which the operator acts. This subspace
+        determines which two single-qutrit basis states the operator acts on. The remaining
+        basis state is not affected by the operator.
+
+        Returns:
+            tuple[int]: subspace on which operator acts
+        """
+        return tuple(sorted(self._subspace))
+
+    @staticmethod
+    def compute_matrix(subspace=[0, 1]):  # pylint: disable=arguments-differ
+        r"""Representation of the operator as a canonical matrix in the computational basis (static method).
+
+        The canonical matrix is the textbook matrix representation that does not consider wires.
+        Implicitly, this assumes that the wires of the operator correspond to the global wire order.
+
+        .. seealso:: :meth:`~.TH.matrix`
+
+        Args:
+            subspace (Sequence[int]): the 2D subspace on which to apply operation
+
+        Returns:
+            ndarray: matrix
+
+        **Example**
+
+        >>> print(qml.TH.compute_matrix(subspace=[0, 2]))
+        array([[ 1.,  0.,  1.],
+               [ 0.,  1.,  0.],
+               [ 1.,  0., -1.]])
+        """
+
+        if len(subspace) != 2:
+            raise ValueError(
+                "The subspace must be a sequence with two unique elements from the set {0, 1, 2}."
+            )
+
+        if not all([s in {0, 1, 2} for s in subspace]):
+            raise ValueError("Elements of the subspace must be 0, 1, or 2.")
+
+        if subspace[0] == subspace[1]:
+            raise ValueError("Elements of subspace list must be unique.")
+
+        subspace = tuple(sorted(subspace))
+
+        mat = np.eye(3, dtype=np.complex128)
+
+        mat[subspace[0], subspace[1]] = 1
+        mat[subspace[1], subspace[0]] = 1
+        mat[subspace[1], subspace[1]] = -1
+
+        return mat
+
+    def adjoint(self):
+        return TH(wires=self.wires, subspace=self.subspace)
+
+    def pow(self, z):
+        if not isinstance(z, int):
+            return super().pow(z)
+
+        return super().pow(z % 2)
+
+
+class TS(Operation):
+    r"""TS(wires)
+
+    The single-qutrit phase gate
+
+    .. math:: TS = \zeta^8 \begin{bmatrix}
+                1 & 0 & 0 \\
+                0 & 1 & 0 \\
+                0 & 0 & \omega
+                \end{bmatrix}
+            \omega = \exp{2 \pi i / 3},
+            \zeta = \omega^{1 / 3} = \exp{2 \pi i / 9}
+
+    **Details:**
+
+    * Number of wires: 1
+    * Number of parameters: 0
+
+    Args:
+        wires (Sequence[int] or int): the wire the operation acts on
+    """
+    num_wires = 1
+    num_params = 0
+    """int: Number of trainable parameters that the operator depends on."""
+
+    @staticmethod
+    def compute_matrix():  # pylint: disable=arguments-differ
+        r"""Representation of the operator as a canonical matrix in the computational basis (static method).
+
+        The canonical matrix is the textbook matrix representation that does not consider wires.
+        Implicitly, this assumes that the wires of the operator correspond to the global wire order.
+
+        .. seealso:: :meth:`~.TS.matrix`
+
+        Returns:
+            ndarray: matrix
+
+        **Example**
+
+        >>> print(qml.TS.compute_matrix())
+        array([[0.76604444-0.64278761j, 0.        +0.j        , 0.        +0.j        ],
+               [0.        +0.j        , 0.76604444-0.64278761j, 0.        +0.j        ],
+               [0.        +0.j        , 0.        +0.j        , 0.17364818+0.98480775j]])
+        """
+        return ZETA**8 * np.diag([1, 1, OMEGA])
+
+
+class TT(Operation):
+    r"""TT(wires)
+    The single qutrit T gate
+
+    .. math:: TT = \begin{bmatrix}
+                1 & 0 & 0 \\
+                0 & \zeta & 0 \\
+                0 & 0 & \zeta^8 \\
+                \end{bmatrix}
+                \zeta = \exp{2 \pi i / 9}
+
+    **Details:**
+
+    * Number of wires: 1
+    * Number of parameters: 0
+
+    Args:
+        wires (Sequence[int] or int): the wire the operation acts on
+    """
+    num_wires = 1
+    num_params = 0
+    """int: Number of trainable parameters that the operator depends on."""
+
+    @staticmethod
+    def compute_matrix():  # pylint: disable=arguments-differ
+        r"""Representation of the operator as a canonical matrix in the computational basis (static method).
+
+        The canonical matrix is the textbook matrix representation that does not consider wires.
+        Implicitly, this assumes that the wires of the operator correspond to the global wire order.
+
+        .. seealso:: :meth:`~.TT.matrix`
+
+        Returns:
+            ndarray: matrix
+
+        **Example**
+
+        >>> print(qml.TT.compute_matrix())
+        array([[1.        +0.j        , 0.        +0.j        , 0.        +0.j        ],
+               [0.        +0.j        , 0.76604444+0.64278761j, 0.        +0.j        ],
+               [0.        +0.j        , 0.        +0.j        , 0.76604444-0.64278761j]])
+        """
+        return np.diag([1, ZETA, ZETA**8])

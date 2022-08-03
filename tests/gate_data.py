@@ -88,10 +88,15 @@ QFT = math.array(
 
 # Qutrit gates
 OMEGA = np.exp(2 * np.pi * 1j / 3)
+ZETA = OMEGA ** (1 / 3)
 
 TSHIFT = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])  # Qutrit right-shift gate
 
 TCLOCK = np.array([[1, 0, 0], [0, OMEGA, 0], [0, 0, OMEGA**2]])  # Qutrit clock gate
+
+TS = np.array([[1, 0, 0], [0, 1, 0], [0, 0, OMEGA]]) * ZETA**8
+
+TT = np.array([[1, 0, 0], [0, ZETA, 0], [0, 0, ZETA**8]])
 
 TSWAP = np.array(
     [
