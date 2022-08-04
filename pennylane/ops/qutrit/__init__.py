@@ -44,6 +44,8 @@ ops = {
     "TH",
     "TS",
     "TT",
+    "TCNOT",
+    "THadamard",
 }
 
 obs = {
