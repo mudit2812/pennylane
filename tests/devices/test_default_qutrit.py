@@ -94,6 +94,22 @@ class TestApply:
             [2, 0],
         ),
         (qml.TZ, [0, 0, 1], np.array([0, 0, -1]), [1, 2]),
+        (qml.TH, [0, 1, 0], np.array([0, 1, 0]), [0, 2]),
+        (
+            qml.TH,
+            [1 / np.sqrt(2), 0, 1 / np.sqrt(2)],
+            np.array([1 / np.sqrt(2), 0.5, -0.5]),
+            [1, 2],
+        ),
+        (qml.TS, [1, 0, 0], np.array([OMEGA ** (8 / 3), 0, 0]), None),
+        (qml.TS, [0, 0, 1], np.array([0, 0, OMEGA * OMEGA ** (8 / 3)]), None),
+        (qml.TT, [1, 0, 0], np.array([1, 0, 0]), None),
+        (
+            qml.TT,
+            [0, 1 / np.sqrt(2), 1 / np.sqrt(2)],
+            np.array([0, OMEGA ** (1 / 3), OMEGA ** (8 / 3)]) / np.sqrt(2),
+            None,
+        ),
     ]
 
     test_data_no_parameters_inverses = [
@@ -128,15 +144,6 @@ class TestApply:
             [1 / np.sqrt(2), 0, 1 / np.sqrt(2)],
             np.array([1 / np.sqrt(2), 0.5, -0.5]),
             [1, 2],
-        ),
-        (qml.TS, [1, 0, 0], np.array([1, 0, 0]), None),
-        (qml.TS, [0, 0, 1], np.array([0, 0, OMEGA * OMEGA ** (8 / 3)]), None),
-        (qml.TT, [1, 0, 0], np.array([1, 0, 0]), None),
-        (
-            qml.TT,
-            [0, 1 / np.sqrt(2), 1 / np.sqrt(2)],
-            np.array([0, OMEGA ** (1 / 3), OMEGA ** (8 / 3)]) / np.sqrt(2),
-            None,
         ),
     ]
 

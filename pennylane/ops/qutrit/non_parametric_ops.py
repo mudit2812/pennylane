@@ -890,11 +890,14 @@ class TH(Operation):
 
         mat = np.eye(3, dtype=np.complex128)
 
+        unused_ind = list({0, 1, 2}.difference(set(subspace))).pop()
+
+        mat[unused_ind, unused_ind] = np.sqrt(2)
         mat[subspace[0], subspace[1]] = 1
         mat[subspace[1], subspace[0]] = 1
         mat[subspace[1], subspace[1]] = -1
 
-        return mat
+        return mat / np.sqrt(2)
 
     def adjoint(self):
         return TH(wires=self.wires, subspace=self.subspace)
