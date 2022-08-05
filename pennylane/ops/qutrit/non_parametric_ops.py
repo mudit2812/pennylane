@@ -1183,5 +1183,3 @@ class THadamard(Operation):
 
         """
         return np.array([[1, 1, 1], [1, OMEGA, OMEGA**2], [1, OMEGA**2, OMEGA]])
-
-    # TODO: Add pow and adjoint methods
