@@ -1142,6 +1142,10 @@ class TCNOT(Operation):
 
         return super().pow(z % 2)
 
+    @property
+    def control_wires(self):
+        return Wires(self.wires[0])
+
 
 class THadamard(Operation):
     r"""THadamard(wires)

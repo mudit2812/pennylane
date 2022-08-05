@@ -23,14 +23,24 @@ import pennylane as qml
 from pennylane.wires import Wires
 from tests.ops.qubit.test_non_parametric_ops import NON_PARAMETRIZED_OPERATIONS
 
-from gate_data import TSHIFT, TCLOCK, TT, TS
+from gate_data import TSHIFT, TCLOCK, TT, TS, TH
+
+TX_01 = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
+TX_02 = np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]])
+TX_12 = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]])
+TCNOT_01 = np.eye(9)
+TCNOT_01[6:, 6:] = TX_01
+TCNOT_02 = np.eye(9)
+TCNOT_02[6:, 6:] = TX_02
+TCNOT_12 = np.eye(9)
+TCNOT_12[6:, 6:] = TX_12
 
 NON_PARAMETRIZED_OPERATIONS = [
     (qml.TShift, TSHIFT, None),
     (qml.TClock, TCLOCK, None),
-    (qml.TX, np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]]), [0, 1]),
-    (qml.TX, np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]]), [0, 2]),
-    (qml.TX, np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]]), [1, 2]),
+    (qml.TX, TX_01, [0, 1]),
+    (qml.TX, TX_02, [0, 2]),
+    (qml.TX, TX_12, [1, 2]),
     (qml.TY, np.array([[0, -1j, 0], [1j, 0, 0], [0, 0, 1]]), [0, 1]),
     (qml.TY, np.array([[0, 0, -1j], [0, 1, 0], [1j, 0, 0]]), [0, 2]),
     (qml.TY, np.array([[1, 0, 0], [0, 0, -1j], [0, 1j, 0]]), [1, 2]),
@@ -45,6 +55,10 @@ NON_PARAMETRIZED_OPERATIONS = [
     (qml.TH, np.array([[1, 0, 0], [0, 1, 1], [0, 1, -1]]), [1, 2]),
     (qml.TS, TS, None),
     (qml.TT, TT, None),
+    (qml.TCNOT, TCNOT_01, [0, 1]),
+    (qml.TCNOT, TCNOT_02, [0, 2]),
+    (qml.TCNOT, TCNOT_12, [1, 2]),
+    (qml.THadamard, TH, None),
 ]
 
 subspace_error_data = [
@@ -150,11 +164,15 @@ period_two_ops = [
     qml.TH(wires=0, subspace=[0, 1]),
     qml.TH(wires=0, subspace=[0, 2]),
     qml.TH(wires=0, subspace=[1, 2]),
+    qml.TCNOT(wires=[0, 1], subspace=[0, 1]),
+    qml.TCNOT(wires=[0, 1], subspace=[0, 2]),
+    qml.TCNOT(wires=[0, 1], subspace=[1, 2]),
 ]
 
 no_pow_method_ops = [
     qml.TS(wires=0),
     qml.TT(wires=0),
+    qml.THadamard(wires=0),
 ]
 
 
@@ -221,6 +239,8 @@ label_data = [
     (qml.TH(wires=0), "TH", "TH"),
     (qml.TS(wires=0), "TS", "TS⁻¹"),
     (qml.TT(wires=0), "TT", "TT⁻¹"),
+    (qml.TCNOT(wires=[0, 1]), "TX", "TX"),
+    (qml.THadamard(wires=0), "THadamard", "THadamard⁻¹"),
 ]
 
 
@@ -244,6 +264,8 @@ control_data = [
     (qml.TH(wires=0), Wires([])),
     (qml.TS(wires=0), Wires([])),
     (qml.TT(wires=0), Wires([])),
+    (qml.TCNOT(wires=[0, 1]), Wires([0])),
+    (qml.THadamard(wires=0), Wires([])),
 ]
 
 
@@ -274,6 +296,9 @@ involution_ops = [
     qml.TH(wires=0, subspace=[0, 1]),
     qml.TH(wires=0, subspace=[0, 2]),
     qml.TH(wires=0, subspace=[1, 2]),
+    qml.TCNOT(wires=[0, 1], subspace=[0, 1]),
+    qml.TCNOT(wires=[0, 1], subspace=[0, 2]),
+    qml.TCNOT(wires=[0, 1], subspace=[1, 2]),
 ]  # ops that are their own inverses
 
 
