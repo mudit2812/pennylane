@@ -145,6 +145,15 @@ class TestApply:
             np.array([1 / np.sqrt(2), 0.5, -0.5]),
             [1, 2],
         ),
+        (qml.TS, [OMEGA ** (8 / 3), 0, 0], np.array([1, 0, 0]), None),
+        (qml.TS, [0, 0, OMEGA * OMEGA ** (8 / 3)], np.array([0, 0, 1]), None),
+        (qml.TT, [1, 0, 0], np.array([1, 0, 0]), None),
+        (
+            qml.TT,
+            np.array([0, OMEGA ** (1 / 3), OMEGA ** (8 / 3)]) / np.sqrt(2),
+            np.array([0, 1 / np.sqrt(2), 1 / np.sqrt(2)]),
+            None,
+        ),
     ]
 
     @pytest.mark.parametrize("operation, input, expected_output, subspace", test_data_no_parameters)
@@ -1201,6 +1210,8 @@ class TestApplyOps:
     single_qutrit_ops = [
         (qml.TShift, dev._apply_tshift),
         (qml.TClock, dev._apply_tclock),
+        (qml.TT, dev._apply_tt),
+        (qml.TS, dev._apply_ts),
     ]
 
     two_qutrit_ops = [

@@ -31,6 +31,7 @@ from .._version import __version__
 tolerance = 1e-10
 
 OMEGA = np.exp(2 * np.pi * 1j / 3)
+ZETA = OMEGA ** (1 / 3)
 
 
 class DefaultQutrit(QutritDevice):
@@ -106,6 +107,8 @@ class DefaultQutrit(QutritDevice):
             "TClock": self._apply_tclock,
             "TAdd": self._apply_tadd,
             "TSWAP": self._apply_tswap,
+            "TT": self._apply_tt,
+            "TS": self._apply_ts,
         }
 
     @functools.lru_cache()
@@ -249,6 +252,39 @@ class DefaultQutrit(QutritDevice):
         all_axes[axes[0]] = axes[1]
         all_axes[axes[1]] = axes[0]
         return self._transpose(state, all_axes)
+
+    def _apply_tt(self, state, axes, inverse=False):
+        """Applies a ternary T gate by multiplying the phases of the ternary T gate along
+        the specified axis.
+
+        Args:
+            state (array[complex]): input state
+            axes (List[int]): target axes to apply transformation
+            inverse (bool): whether to apply the inverse operation
+
+        returns:
+            array[complex]: output state
+        """
+        partial_state = self._apply_phase(state, axes, 1, ZETA, inverse)
+        return self._apply_phase(partial_state, axes, 2, ZETA**8, inverse)
+
+    def _apply_ts(self, state, axes, inverse=False):
+        """Applies a ternary S gate by multiplying the phase of the ternary S gate along
+        the specified axis.
+
+        Args:
+            state (array[complex]): input state
+            axes (List[int]): target axes to apply transformation
+            inverse (bool): whether to apply the inverse operation
+
+        returns:
+            array[complex]: output state
+        """
+        new_state = self._apply_phase(state, axes, 2, OMEGA, inverse)
+        for i in range(3):
+            new_state = self._apply_phase(new_state, axes, i, ZETA**8, inverse)
+
+        return new_state
 
     def _apply_phase(self, state, axes, index, parameters, inverse=False):
         """Applies a phase onto the specified index along the axis specified in ``axes``.
