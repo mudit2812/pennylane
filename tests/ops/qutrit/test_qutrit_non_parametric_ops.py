@@ -40,9 +40,9 @@ NON_PARAMETRIZED_OPERATIONS = [
     (qml.TZ, np.diag([-1, 1, 1]), [1, 0]),
     (qml.TZ, np.diag([-1, 1, 1]), [2, 0]),
     (qml.TZ, np.diag([1, -1, 1]), [2, 1]),
-    (qml.TH, np.array([[1, 1, 0], [1, -1, 0], [0, 0, 1]]), [0, 1]),
-    (qml.TH, np.array([[1, 0, 1], [0, 1, 0], [1, 0, -1]]), [0, 2]),
-    (qml.TH, np.array([[1, 0, 0], [0, 1, 1], [0, 1, -1]]), [1, 2]),
+    (qml.TH, np.array([[1, 1, 0], [1, -1, 0], [0, 0, np.sqrt(2)]]) / np.sqrt(2), [0, 1]),
+    (qml.TH, np.array([[1, 0, 1], [0, np.sqrt(2), 0], [1, 0, -1]]) / np.sqrt(2), [0, 2]),
+    (qml.TH, np.array([[np.sqrt(2), 0, 0], [0, 1, 1], [0, 1, -1]]) / np.sqrt(2), [1, 2]),
     (qml.TS, TS, None),
     (qml.TT, TT, None),
 ]
