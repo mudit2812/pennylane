@@ -110,6 +110,8 @@ class TestApply:
             np.array([0, OMEGA ** (1 / 3), OMEGA ** (8 / 3)]) / np.sqrt(2),
             None,
         ),
+        (qml.THadamard, [0, 1, 0], np.array([1, OMEGA, OMEGA**2]) * (-1j / np.sqrt(3)), None),
+        (qml.THadamard, [0, 0, 1], np.array([1, OMEGA**2, OMEGA]) * (-1j / np.sqrt(3)), None),
     ]
 
     test_data_no_parameters_inverses = [
