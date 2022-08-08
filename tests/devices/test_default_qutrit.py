@@ -1242,8 +1242,6 @@ class TestApplyOps:
 class TestApplyOperationUnit:
     """Unit tests for the internal _apply_operation method."""
 
-    # TODO: Add test for testing operations with internal implementations
-
     @pytest.mark.parametrize("inverse", [True, False])
     def test_apply_tensordot_case(self, inverse, monkeypatch):
         """Tests the case when np.tensordot is used to apply an operation in
