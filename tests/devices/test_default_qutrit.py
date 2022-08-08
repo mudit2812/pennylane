@@ -193,6 +193,13 @@ class TestApply:
             np.array([0, 1 / math.sqrt(2), 0, 0, 0, 0, 0, 0, 1 / math.sqrt(2)]),
             None,
         ),
+        (qml.TCNOT, [0, 0, 0, 0, 0, 0, 0, 1, 0], np.array([0, 0, 0, 0, 0, 0, 0, 0, 1]), [1, 2]),
+        (
+            qml.TCNOT,
+            [0, 0, 0, 1 / np.sqrt(2), 0, 0, 0, 1 / np.sqrt(2), 0],
+            np.array([0, 0, 0, 1 / np.sqrt(2), 0, 0, 1 / np.sqrt(2), 0, 0]),
+            [0, 1],
+        ),
     ]
 
     test_data_tadd = [

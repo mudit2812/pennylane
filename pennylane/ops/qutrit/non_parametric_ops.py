@@ -1186,4 +1186,6 @@ class THadamard(Operation):
         >>> print(qml.THadamard.compute_matrix())
 
         """
-        return np.array([[1, 1, 1], [1, OMEGA, OMEGA**2], [1, OMEGA**2, OMEGA]])
+        return (-1j / np.sqrt(3)) * np.array(
+            [[1, 1, 1], [1, OMEGA, OMEGA**2], [1, OMEGA**2, OMEGA]]
+        )

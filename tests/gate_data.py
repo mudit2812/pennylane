@@ -98,7 +98,7 @@ TS = np.array([[1, 0, 0], [0, 1, 0], [0, 0, OMEGA]]) * ZETA**8
 
 TT = np.array([[1, 0, 0], [0, ZETA, 0], [0, 0, ZETA**8]])
 
-TH = np.array([[1, 1, 1], [1, OMEGA, OMEGA**2], [1, OMEGA**2, OMEGA]])
+TH = (-1j / np.sqrt(3)) * np.array([[1, 1, 1], [1, OMEGA, OMEGA**2], [1, OMEGA**2, OMEGA]])
 
 TSWAP = np.array(
     [
