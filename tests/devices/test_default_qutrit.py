@@ -147,6 +147,15 @@ class TestApply:
             np.array([1 / np.sqrt(2), 0.5, -0.5]),
             [1, 2],
         ),
+        (qml.TS, [OMEGA ** (8 / 3), 0, 0], np.array([1, 0, 0]), None),
+        (qml.TS, [0, 0, OMEGA * OMEGA ** (8 / 3)], np.array([0, 0, 1]), None),
+        (qml.TT, [1, 0, 0], np.array([1, 0, 0]), None),
+        (
+            qml.TT,
+            np.array([0, OMEGA ** (1 / 3), OMEGA ** (8 / 3)]) / np.sqrt(2),
+            np.array([0, 1 / np.sqrt(2), 1 / np.sqrt(2)]),
+            None,
+        ),
         (
             qml.THadamard,
             np.array([1, OMEGA, OMEGA**2]) * (-1j / np.sqrt(3)),
@@ -1222,6 +1231,8 @@ class TestApplyOps:
     single_qutrit_ops = [
         (qml.TShift, dev._apply_tshift),
         (qml.TClock, dev._apply_tclock),
+        (qml.TT, dev._apply_tt),
+        (qml.TS, dev._apply_ts),
     ]
 
     two_qutrit_ops = [
@@ -1251,8 +1262,6 @@ class TestApplyOps:
 
 class TestApplyOperationUnit:
     """Unit tests for the internal _apply_operation method."""
-
-    # TODO: Add test for testing operations with internal implementations
 
     @pytest.mark.parametrize("inverse", [True, False])
     def test_apply_tensordot_case(self, inverse, monkeypatch):

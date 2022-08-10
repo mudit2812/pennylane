@@ -955,6 +955,11 @@ class TS(Operation):
         """
         return ZETA**8 * np.diag([1, 1, OMEGA])
 
+    def adjoint(self):
+        op = TS(wires=self.wires)
+        op.inverse = not self.inverse
+        return op
+
 
 class TT(Operation):
     r"""TT(wires)
@@ -999,6 +1004,11 @@ class TT(Operation):
                [0.        +0.j        , 0.        +0.j        , 0.76604444-0.64278761j]])
         """
         return np.diag([1, ZETA, ZETA**8])
+
+    def adjoint(self):
+        op = TT(wires=self.wires)
+        op.inverse = not self.inverse
+        return op
 
 
 class TCNOT(Operation):
