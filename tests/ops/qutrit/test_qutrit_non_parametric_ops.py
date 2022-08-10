@@ -282,6 +282,7 @@ adjoint_ops = [  # ops that are not their own inverses
     qml.TShift(wires=0),
     qml.TClock(wires=0),
     qml.TAdd(wires=[0, 1]),
+    qml.THadamard(wires=0),
 ]
 
 involution_ops = [

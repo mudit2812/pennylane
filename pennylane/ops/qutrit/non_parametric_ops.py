@@ -1189,3 +1189,8 @@ class THadamard(Operation):
         return (-1j / np.sqrt(3)) * np.array(
             [[1, 1, 1], [1, OMEGA, OMEGA**2], [1, OMEGA**2, OMEGA]]
         )
+
+    def adjoint(self):
+        op = THadamard(self.wires)
+        op.inverse = not self.inverse
+        return op
