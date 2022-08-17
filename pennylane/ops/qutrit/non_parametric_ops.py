@@ -410,6 +410,9 @@ class TX(Operation):
     given as a keyword argument and determines which two of three single-qutrit
     basis states the operation applies to.
 
+    The construction of this operator is based on section 2 of
+    `Di et al. (2012) <https://arxiv.org/abs/1105.5485>`_.
+
     **Details:**
 
     * Number of wires: 1
@@ -540,6 +543,9 @@ class TY(Operation):
     given as a keyword argument and determines which two of three single-qutrit
     basis states the operation applies to.
 
+    The construction of this operator is based on section 2 of
+    `Di et al. (2012) <https://arxiv.org/abs/1105.5485>`_.
+
     **Details:**
 
     * Number of wires: 1
@@ -668,6 +674,9 @@ class TZ(Operation):
     given as a keyword argument and determines which two of three single-qutrit
     basis states the operation applies to. The second element of the subspace will
     determine which basis state the local -1 phase applies to
+
+    The construction of this operator is based on section 2 of
+    `Di et al. (2012) <https://arxiv.org/abs/1105.5485>`_.
 
     **Details:**
 
