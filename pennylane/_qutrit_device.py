@@ -135,14 +135,28 @@ class QutritDevice(QubitDevice):  # pylint: disable=too-many-public-methods
         Returns:
             array[int]: basis states in ternary representation
         """
-        ternary_arr = []
-        for sample in samples:
-            num = []
-            for _ in range(num_wires):
-                sample, r = divmod(sample, 3)
-                num.append(r)
 
-            ternary_arr.append(num[::-1])
+        def create_ternary_batch(sample_batch, num_wires):
+            arr = []
+
+            for sample in sample_batch:
+                num = []
+                for _ in range(num_wires):
+                    sample, r = divmod(sample, 3)
+                    num.append(r)
+
+                arr.append(num[::-1])
+
+            return arr
+
+        ternary_arr = []
+
+        if QubitDevice._ndim(samples) == 2:
+            for sample_batch in samples:
+                ternary_arr.append(create_ternary_batch(sample_batch, num_wires))
+
+        else:
+            ternary_arr = create_ternary_batch(samples, num_wires)
 
         return np.array(ternary_arr, dtype=dtype)
 
@@ -228,29 +242,29 @@ class QutritDevice(QubitDevice):  # pylint: disable=too-many-public-methods
         wires = Wires(wires)
         # translate to wire labels used by device
         device_wires = self.map_wires(wires)
+        num_wires = len(device_wires)
 
-        sample_slice = Ellipsis if shot_range is None else slice(*shot_range)
-        samples = self._samples[sample_slice, device_wires]
+        if shot_range is None:
+            # The Ellipsis (...) corresponds to broadcasting and shots dimensions or only shots
+            samples = self._samples[..., device_wires]
+        else:
+            # The Ellipsis (...) corresponds to the broadcasting dimension or no axis at all
+            samples = self._samples[..., slice(*shot_range), device_wires]
 
-        # convert samples from a list of 0, 1, 2 integers, to base 10 representation
-        powers_of_three = 3 ** np.arange(len(device_wires))[::-1]
+        # convert samples from a list of 0, 1 integers, to base 10 representation
+        powers_of_three = 3 ** np.arange(num_wires)[::-1]
         indices = samples @ powers_of_three
 
+        # `self._samples` typically has two axes ((shots, wires)) but can also have three with
+        # broadcasting ((batch_size, shots, wires)) so that we simply read out the batch_size.
+        batch_size = self._samples.shape[0] if np.ndim(self._samples) == 3 else None
+        dim = 3**num_wires
         # count the basis state occurrences, and construct the probability vector
         if bin_size is not None:
-            bins = len(samples) // bin_size
-
-            indices = indices.reshape((bins, -1))
-            prob = np.zeros([3 ** len(device_wires), bins], dtype=np.float64)
-
-            for b, idx in enumerate(indices):
-                basis_states, counts = np.unique(idx, return_counts=True)
-                prob[basis_states, b] = counts / bin_size
-
+            num_bins = samples.shape[-2] // bin_size
+            prob = self._count_binned_samples(indices, batch_size, dim, bin_size, num_bins)
         else:
-            basis_states, counts = np.unique(indices, return_counts=True)
-            prob = np.zeros([3 ** len(device_wires)], dtype=np.float64)
-            prob[basis_states] = counts / len(samples)
+            prob = self._count_unbinned_samples(indices, batch_size, dim)
 
         return self._asarray(prob, dtype=self.R_DTYPE)
 
@@ -290,6 +304,9 @@ class QutritDevice(QubitDevice):  # pylint: disable=too-many-public-methods
             array[float]: array of the resulting marginal probabilities.
         """
 
+        dim = 3**self.num_wires
+        batch_size = self._get_batch_size(prob, (dim,), dim)  # pylint: disable=assignment-from-none
+
         if wires is None:
             # no need to marginalize
             return prob
@@ -303,17 +320,22 @@ class QutritDevice(QubitDevice):  # pylint: disable=too-many-public-methods
         inactive_device_wires = self.map_wires(inactive_wires)
 
         # reshape the probability so that each axis corresponds to a wire
-        prob = self._reshape(prob, [3] * self.num_wires)
+        shape = [3] * self.num_wires
+        if batch_size is not None:
+            shape.insert(0, batch_size)
+        # prob now is reshaped to have self.num_wires+1 axes in the case of broadcasting
+        prob = self._reshape(prob, shape)
 
         # sum over all inactive wires
-        # hotfix to catch when default.qutrit uses this method
+        # hotfix to catch when default.qubit uses this method
         # since then device_wires is a list
         if isinstance(inactive_device_wires, Wires):
-            wires = inactive_device_wires.labels
-        else:
-            wires = inactive_device_wires
+            inactive_device_wires = inactive_device_wires.labels
 
-        prob = self._flatten(self._reduce_sum(prob, wires))
+        if batch_size is not None:
+            inactive_device_wires = [idx + 1 for idx in inactive_device_wires]
+        flat_shape = (-1,) if batch_size is None else (batch_size, -1)
+        prob = self._reshape(self._reduce_sum(prob, inactive_device_wires), flat_shape)
 
         # The wires provided might not be in consecutive order (i.e., wires might be [2, 0]).
         # If this is the case, we must permute the marginalized probability so that
@@ -324,20 +346,44 @@ class QutritDevice(QubitDevice):  # pylint: disable=too-many-public-methods
 
         powers_of_three = 3 ** np.arange(len(device_wires))[::-1]
         perm = basis_states @ powers_of_three
-        return self._gather(prob, perm)
+        # The permutation happens on the last axis both with and without broadcasting
+        out = self._gather(prob, perm, axis=1 if batch_size is not None else 0)
+
+        return out
 
     def sample(self, observable, shot_range=None, bin_size=None, counts=False):
+        """Return samples of an observable.
+
+        Args:
+            observable (Observable): the observable to sample
+            shot_range (tuple[int]): 2-tuple of integers specifying the range of samples
+                to use. If not specified, all samples are used.
+            bin_size (int): Divides the shot range into bins of size ``bin_size``, and
+                returns the measurement statistic separately over each bin. If not
+                provided, the entire shot range is treated as a single bin.
+            counts (bool): whether counts (``True``) or raw samples (``False``)
+                should be returned
+
+        Raises:
+            EigvalsUndefinedError: if no information is available about the
+                eigenvalues of the observable
+
+        Returns:
+            Union[array[float], dict, list[dict]]: samples in an array of
+            dimension ``(shots,)`` or counts
+        """
+
         def _samples_to_counts(samples, no_observable_provided):
             """Group the obtained samples into a dictionary.
 
             **Example**
 
                 >>> samples
-                tensor([[0, 0, 1],
-                        [0, 0, 1],
+                tensor([[0, 0, 2],
+                        [0, 0, 2],
                         [1, 1, 1]], requires_grad=True)
                 >>> self._samples_to_counts(samples)
-                {'111':1, '001':2}
+                {'111':1, '002':2}
             """
             if no_observable_provided:
                 # If we describe a state vector, we need to convert its list representation
@@ -345,33 +391,37 @@ class QutritDevice(QubitDevice):  # pylint: disable=too-many-public-methods
                 # Before converting to str, we need to extract elements from arrays
                 # to satisfy the case of jax interface, as jax arrays do not support str.
                 samples = ["".join([str(s.item()) for s in sample]) for sample in samples]
+
             states, counts = np.unique(samples, return_counts=True)
             return dict(zip(states, counts))
 
-        # TODO: Add special cases for any observables that require them once list of
-        # observables is updated.
-
         # translate to wire labels used by device
         device_wires = self.map_wires(observable.wires)
-        name = observable.name  # pylint: disable=unused-variable
-        sample_slice = Ellipsis if shot_range is None else slice(*shot_range)
+        name = observable.name
+        # Select the samples from self._samples that correspond to ``shot_range`` if provided
+        if shot_range is None:
+            sub_samples = self._samples
+        else:
+            # Indexing corresponds to: (potential broadcasting, shots, wires). Note that the last
+            # colon (:) is required because shots is the second-to-last axis and the
+            # Ellipsis (...) otherwise would take up broadcasting and shots axes.
+            sub_samples = self._samples[..., slice(*shot_range), :]
+
         no_observable_provided = isinstance(observable, MeasurementProcess)
 
-        if no_observable_provided:  # if no observable was provided then return the raw samples
-            if (
-                len(observable.wires) != 0
-            ):  # if wires are provided, then we only return samples from those wires
-                samples = self._samples[sample_slice, np.array(device_wires)]
+        if no_observable_provided:
+            # if no observable was provided then return the raw samples
+            if len(observable.wires) != 0:
+                # if wires are provided, then we only return samples from those wires
+                samples = sub_samples[..., np.array(device_wires)]
             else:
-                samples = self._samples[sample_slice]
+                samples = sub_samples
 
         else:
 
             # Replace the basis state in the computational basis with the correct eigenvalue.
             # Extract only the columns of the basis samples required based on ``wires``.
-            samples = self._samples[
-                sample_slice, np.array(device_wires)
-            ]  # Add np.array here for Jax support.
+            samples = sub_samples[..., np.array(device_wires)]  # Add np.array here for Jax support.
             powers_of_three = 3 ** np.arange(samples.shape[-1])[::-1]
             indices = samples @ powers_of_three
             indices = np.array(indices)  # Add np.array here for Jax support.
@@ -395,11 +445,13 @@ class QutritDevice(QubitDevice):  # pylint: disable=too-many-public-methods
                 _samples_to_counts(bin_sample, no_observable_provided)
                 for bin_sample in samples.reshape(shape)
             ]
-        return (
+
+        res = (
             samples.reshape((num_wires, bin_size, -1))
             if no_observable_provided
             else samples.reshape((bin_size, -1))
         )
+        return res
 
     # TODO: Implement function. Currently unimplemented due to lack of decompositions available
     # for existing operations and lack of non-parametrized observables.

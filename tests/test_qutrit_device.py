@@ -28,6 +28,7 @@ from pennylane.circuit_graph import CircuitGraph
 from pennylane.wires import Wires
 from pennylane.tape import QuantumTape
 from pennylane.measurements import state
+from .test_qubit_device import _working_get_batch_size
 
 
 @pytest.fixture(scope="function")
@@ -371,11 +372,6 @@ class TestExtractStatistics:
 class TestSample:
     """Test the sample method"""
 
-    # TODO: Add tests for sampling with observables that have eigenvalues to sample from once
-    # such observables are added for qutrits.
-    # TODO: Add tests for counts for observables with eigenvalues once such observables are
-    # added for qutrits.
-
     def test_sample_with_no_observable_and_no_wires(
         self, mock_qutrit_device_with_original_statistics, tol
     ):
@@ -388,6 +384,19 @@ class TestSample:
 
         res = dev.sample(obs)
         assert np.array_equal(res, generated_samples)
+
+    def test_correct_custom_eigenvalues(
+        self, mock_qutrit_device_with_original_statistics, monkeypatch, tol
+    ):
+        """Test that sample for a product of Pauli observables produces samples of eigenvalues"""
+        obs = qml.GellMannObs(3, wires=1)
+        dev = mock_qutrit_device_with_original_statistics(wires=2)
+        dev._samples = np.array([[2, 0], [0, 1]])
+
+        with monkeypatch.context() as m:
+            res = dev.sample(obs)
+
+        assert np.array_equal(res, np.array([1, -1]))
 
     def test_sample_with_no_observable_and_with_wires(
         self, mock_qutrit_device_with_original_statistics, tol
@@ -488,6 +497,60 @@ class TestSample:
         assert out == expected_counts
 
 
+class TestSampleWithBroadcasting:
+    """Test the sample method when broadcasting is used"""
+
+    def test_correct_custom_eigenvalues(
+        self, mock_qutrit_device_with_original_statistics, monkeypatch, tol
+    ):
+        """Test that sample for a product of Pauli observables produces samples
+        of eigenvalues when using broadcasting"""
+        obs = qml.GellMannObs(3, wires=0)
+        dev = mock_qutrit_device_with_original_statistics(wires=2)
+        dev._samples = np.array([[[1, 0], [0, 2]], [[0, 1], [1, 1]], [[2, 0], [0, 2]]])
+
+        with monkeypatch.context() as m:
+            res = dev.sample(obs)
+
+        assert np.array_equal(res, np.array([[-1, 1], [-1, 1], [0, 1]]))
+
+    def test_sample_with_no_observable_and_no_wires(
+        self, mock_qutrit_device_with_original_statistics, tol
+    ):
+        """Test that when we sample a device without providing an observable or wires then it
+        will return the raw samples when using broadcasting"""
+        obs = qml.measurements.sample(op=None, wires=None)
+        dev = mock_qutrit_device_with_original_statistics(wires=2)
+        generated_samples = np.array([[[1, 0], [0, 2]], [[0, 1], [1, 1]], [[2, 0], [0, 2]]])
+        dev._samples = generated_samples
+
+        res = dev.sample(obs)
+        assert np.array_equal(res, generated_samples)
+
+    def test_sample_with_no_observable_and_with_wires(
+        self, mock_qutrit_device_with_original_statistics, tol
+    ):
+        """Test that when we sample a device without providing an observable but we specify wires
+        then it returns the generated samples for only those wires when using broadcasting"""
+        obs = qml.measurements.sample(op=None, wires=[1])
+        dev = mock_qutrit_device_with_original_statistics(wires=2)
+        generated_samples = np.array([[[1, 0], [0, 2]], [[0, 1], [1, 1]], [[2, 0], [0, 2]]])
+        dev._samples = generated_samples
+
+        wire_samples = np.array([[[0], [2]], [[1], [1]], [[0], [2]]])
+        res = dev.sample(obs)
+
+        assert np.array_equal(res, wire_samples)
+
+    def test_no_eigval_error(self, mock_qutrit_device_with_original_statistics):
+        """Tests that an error is thrown if sample is called with an observable
+        that does not have eigenvalues defined when using broadcasting."""
+        dev = mock_qutrit_device_with_original_statistics()
+        dev._samples = np.array([[[1, 0], [1, 1]], [[1, 1], [0, 0]], [[0, 1], [1, 0]]])
+        with pytest.raises(qml.operation.EigvalsUndefinedError, match="Cannot compute samples"):
+            dev.sample(qml.Hamiltonian([1.0], [qml.GellMannObs(1, wires=0)]))
+
+
 class TestGenerateSamples:
     """Test the generate_samples method"""
 
@@ -545,6 +608,33 @@ class TestSampleBasisStates:
             match="The number of shots has to be explicitly set on the device",
         ):
             dev.sample_basis_states(number_of_states, state_probs)
+
+    @pytest.mark.filterwarnings("ignore:Creating an ndarray from ragged nested")
+    def test_sampling_with_broadcasting(self, mock_qutrit_device, monkeypatch):
+        """Tests that the sample_basis_states method samples with the correct arguments
+        when using broadcasted probabilities"""
+
+        shots = 1000
+
+        number_of_states = 3
+        dev = mock_qutrit_device()
+        dev.shots = shots
+        state_probs = [[0.3, 0.2, 0.5], [0.6, 0.3, 0.1]]
+        # First run the sampling to see that it is using numpy.random.choice correctly
+        res = dev.sample_basis_states(number_of_states, state_probs)
+        assert qml.math.shape(res) == (2, shots)
+        assert set(res.flat).issubset({0, 1, 2})
+
+        with monkeypatch.context() as m:
+            # Mock the numpy.random.choice method such that it returns the expected values
+            m.setattr("numpy.random.choice", lambda x, y, p: (x, y, p))
+            res = dev.sample_basis_states(number_of_states, state_probs)
+
+        assert len(res) == 2
+        for _res, prob in zip(res, state_probs):
+            assert np.array_equal(_res[0], np.array([0, 1, 2]))
+            assert _res[1] == 1000
+            assert _res[2] == prob
 
 
 class TestStatesToTernary:
@@ -631,6 +721,38 @@ class TestStatesToTernary:
         res = dev.states_to_ternary(samples, wires)
         assert np.allclose(res, ternary_states, atol=tol, rtol=0)
 
+    test_ternary_conversion_data_broadcasted = [
+        (
+            np.array([[2, 3, 2], [0, 0, 1], [6, 8, 5]]),
+            np.array(
+                [
+                    [[0, 2], [1, 0], [0, 2]],
+                    [[0, 0], [0, 0], [0, 1]],
+                    [[2, 0], [2, 2], [1, 2]],
+                ]
+            ),
+        ),
+        (
+            np.array([[10, 7, 2, 15, 26, 20], [18, 24, 11, 6, 1, 0]]),
+            np.array(
+                [
+                    [[1, 0, 1], [0, 2, 1], [0, 0, 2], [1, 2, 0], [2, 2, 2], [2, 0, 2]],
+                    [[2, 0, 0], [2, 2, 0], [1, 0, 2], [0, 2, 0], [0, 0, 1], [0, 0, 0]],
+                ]
+            ),
+        ),
+    ]
+
+    @pytest.mark.parametrize("samples, ternary_states", test_ternary_conversion_data_broadcasted)
+    def test_correct_conversion_broadcasted(self, mock_qutrit_device, samples, ternary_states, tol):
+        """Tests that the states_to_binary method converts broadcasted
+        samples to binary correctly"""
+        dev = mock_qutrit_device()
+        dev.shots = 5
+        wires = ternary_states.shape[-1]
+        res = dev.states_to_ternary(samples, wires)
+        assert np.allclose(res, ternary_states, atol=tol, rtol=0)
+
 
 class TestExpval:
     """Test the expval method"""
@@ -653,6 +775,27 @@ class TestExpval:
             res = dev.expval(obs)
 
         assert res == (obs.eigvals() @ probs).real
+
+    def test_analytic_expval_broadcasted(
+        self, mock_qutrit_device_with_original_statistics, monkeypatch
+    ):
+        """Tests expval method when the analytic attribute is True and using broadcasting
+
+        Additional QutritDevice methods that are mocked:
+        -probability
+        """
+        obs = qml.GellMannObs(3, wires=0)
+        probs = np.array([[0.5, 0.2, 0.3], [0.2, 0.7, 0.1], [0.3, 0.4, 0.3]])
+        dev = mock_qutrit_device_with_original_statistics()
+
+        assert dev.shots is None
+
+        call_history = []
+        with monkeypatch.context() as m:
+            m.setattr(QutritDevice, "probability", lambda self, wires=None: probs)
+            res = dev.expval(obs)
+
+        assert np.allclose(res, (probs @ obs.eigvals()).real)
 
     def test_non_analytic_expval(self, mock_qutrit_device_with_original_statistics, monkeypatch):
         """Tests that expval method when the analytic attribute is False
@@ -716,6 +859,27 @@ class TestVar:
 
         assert res == (obs.eigvals() ** 2) @ probs - (obs.eigvals() @ probs).real ** 2
 
+    def test_analytic_var_broadcasted(
+        self, mock_qutrit_device_with_original_statistics, monkeypatch
+    ):
+        """Tests var method when the analytic attribute is True and using broadcasting
+
+        Additional QutritDevice methods that are mocked:
+        -probability
+        """
+        obs = qml.GellMannObs(1, wires=0)
+        probs = [[0.5, 0.5, 0], [0.5, 0.25, 0.25]]
+        dev = mock_qutrit_device_with_original_statistics()
+
+        assert dev.shots is None
+
+        call_history = []
+        with monkeypatch.context() as m:
+            m.setattr(QubitDevice, "probability", lambda self, wires=None: probs)
+            res = dev.var(obs)
+
+        assert np.allclose(res, probs @ (obs.eigvals() ** 2) - (probs @ obs.eigvals()).real ** 2)
+
     def test_non_analytic_var(self, mock_qutrit_device_with_original_statistics, monkeypatch):
         """Tests that var method when the analytic attribute is False
 
@@ -778,6 +942,204 @@ class TestEstimateProb:
         with monkeypatch.context() as m:
             m.setattr(dev, "_samples", samples)
             m.setattr(dev, "shots", 4)
+            res = dev.estimate_probability(wires=wires, bin_size=bin_size)
+
+        assert np.allclose(res, expected)
+
+    @pytest.mark.parametrize(
+        "wires, expected",
+        [
+            ([0], [[0.0, 0.5], [1.0, 0.5], [0.0, 0.0]]),
+            (
+                None,
+                [
+                    [0.0, 0.5],
+                    [0.0, 0.0],
+                    [0.0, 0.0],
+                    [0.0, 0.5],
+                    [0.5, 0.0],
+                    [0.5, 0.0],
+                    [0.0, 0.0],
+                    [0.0, 0.0],
+                    [0.0, 0.0],
+                ],
+            ),
+            (
+                [0, 1],
+                [
+                    [0.0, 0.5],
+                    [0.0, 0.0],
+                    [0.0, 0.0],
+                    [0.0, 0.5],
+                    [0.5, 0.0],
+                    [0.5, 0.0],
+                    [0.0, 0.0],
+                    [0.0, 0.0],
+                    [0.0, 0.0],
+                ],
+            ),
+        ],
+    )
+    def test_estimate_probability_with_binsize(
+        self, wires, expected, mock_qutrit_device_with_original_statistics, monkeypatch
+    ):
+        """Tests the estimate_probability method with a bin size"""
+        dev = mock_qutrit_device_with_original_statistics(wires=2)
+        samples = np.array([[1, 1], [1, 2], [1, 0], [0, 0]])
+        bin_size = 2
+
+        with monkeypatch.context() as m:
+            m.setattr(dev, "_samples", samples)
+            res = dev.estimate_probability(wires=wires, bin_size=bin_size)
+
+        assert np.allclose(res, expected)
+
+    @pytest.mark.parametrize(
+        "wires, expected",
+        [
+            ([0], [[0.0, 0.5, 0.5], [0.5, 0.25, 0.25], [0.25, 0.0, 0.75]]),
+            (
+                None,
+                [
+                    [0.0, 0.0, 0.0, 0.25, 0.0, 0.25, 0.25, 0.25, 0.0],
+                    [0.25, 0.25, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.25],
+                    [0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.75, 0.0],
+                ],
+            ),
+            (
+                [0, 1],
+                [
+                    [0.0, 0.0, 0.0, 0.25, 0.0, 0.25, 0.25, 0.25, 0.0],
+                    [0.25, 0.25, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.25],
+                    [0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.75, 0.0],
+                ],
+            ),
+        ],
+    )
+    def test_estimate_probability_with_broadcasting(
+        self, wires, expected, mock_qutrit_device_with_original_statistics, monkeypatch
+    ):
+        """Tests the estimate_probability method with parameter broadcasting"""
+        dev = mock_qutrit_device_with_original_statistics(wires=2)
+        samples = np.array(
+            [
+                [[1, 0], [1, 2], [2, 1], [2, 0]],
+                [[0, 0], [1, 1], [2, 2], [0, 1]],
+                [[2, 1], [2, 1], [2, 1], [0, 2]],
+            ]
+        )
+
+        with monkeypatch.context() as m:
+            m.setattr(dev, "_samples", samples)
+            res = dev.estimate_probability(wires=wires)
+
+        assert np.allclose(res, expected)
+
+    @pytest.mark.parametrize(
+        "wires, expected",
+        [
+            (
+                [0],
+                [
+                    [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                    [[0.5, 0.5, 0.0], [0.5, 0.0, 0.5], [0.0, 0.5, 0.5]],
+                    [[0.0, 0.5, 0.5], [1.0, 0.5, 0.0], [0.0, 0.0, 0.5]],
+                ],
+            ),
+            (
+                None,
+                [
+                    [
+                        [1.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 1.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 1.0],
+                    ],
+                    [
+                        [0.0, 0.0, 0.0],
+                        [0.5, 0.5, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.5, 0.0, 0.5],
+                        [0.0, 0.5, 0.5],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                    ],
+                    [
+                        [0.0, 0.5, 0.0],
+                        [0.0, 0.0, 0.5],
+                        [0.0, 0.0, 0.0],
+                        [0.5, 0.0, 0.0],
+                        [0.5, 0.0, 0.0],
+                        [0.0, 0.5, 0.0],
+                        [0.0, 0.0, 0.5],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                    ],
+                ],
+            ),
+            (
+                [0, 1],
+                [
+                    [
+                        [1.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 1.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 1.0],
+                    ],
+                    [
+                        [0.0, 0.0, 0.0],
+                        [0.5, 0.5, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                        [0.5, 0.0, 0.5],
+                        [0.0, 0.5, 0.5],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                    ],
+                    [
+                        [0.0, 0.5, 0.0],
+                        [0.0, 0.0, 0.5],
+                        [0.0, 0.0, 0.0],
+                        [0.5, 0.0, 0.0],
+                        [0.5, 0.0, 0.0],
+                        [0.0, 0.5, 0.0],
+                        [0.0, 0.0, 0.5],
+                        [0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                    ],
+                ],
+            ),
+        ],
+    )
+    def test_estimate_probability_with_binsize_with_broadcasting(
+        self, wires, expected, mock_qutrit_device_with_original_statistics, monkeypatch
+    ):
+        """Tests the estimate_probability method with a bin size and parameter broadcasting"""
+        dev = mock_qutrit_device_with_original_statistics(wires=2)
+        bin_size = 2
+        samples = np.array(
+            [
+                [[0, 0], [0, 0], [1, 1], [1, 1], [2, 2], [2, 2]],
+                [[0, 1], [1, 2], [2, 0], [0, 1], [1, 2], [2, 0]],
+                [[1, 0], [1, 1], [1, 2], [0, 0], [0, 1], [2, 0]],
+            ]
+        )
+
+        with monkeypatch.context() as m:
+            m.setattr(dev, "_samples", samples)
             res = dev.estimate_probability(wires=wires, bin_size=bin_size)
 
         assert np.allclose(res, expected)
@@ -867,6 +1229,64 @@ class TestMarginalProb:
 
         res = dev.marginal_prob(probs, wires=None)
         assert np.allclose(res, probs, atol=tol, rtol=0)
+
+    broadcasted_marginal_test_data = [
+        (
+            np.array(
+                [
+                    [0.04, 0.15, 0.28, 0.1, 0.03, 0.2, 0.05, 0.0, 0.15],
+                    [0.05, 0.0, 0.15, 0.1, 0.03, 0.2, 0.04, 0.15, 0.28],
+                    [0.28, 0.1, 0.03, 0.0, 0.15, 0.04, 0.15, 0.2, 0.05],
+                ]
+            ),
+            np.array([[0.47, 0.33, 0.2], [0.2, 0.33, 0.47], [0.41, 0.19, 0.4]]),
+            [0],
+            2,
+        ),
+        (
+            np.array(
+                [
+                    [0.04, 0.15, 0.28, 0.1, 0.03, 0.2, 0.05, 0.0, 0.15],
+                    [0.05, 0.0, 0.15, 0.1, 0.03, 0.2, 0.04, 0.15, 0.28],
+                    [0.28, 0.1, 0.03, 0.0, 0.15, 0.04, 0.15, 0.2, 0.05],
+                ]
+            ),
+            np.array([[0.19, 0.18, 0.63], [0.19, 0.18, 0.63], [0.43, 0.45, 0.12]]),
+            [1],
+            2,
+        ),
+    ]
+
+    @pytest.mark.parametrize("probs, marginals, wires, num_wires", broadcasted_marginal_test_data)
+    def test_correct_broadcasted_marginals_returned(
+        self,
+        monkeypatch,
+        mock_qutrit_device_with_original_statistics,
+        probs,
+        marginals,
+        wires,
+        num_wires,
+        tol,
+    ):
+        """Test that the correct marginals are returned by the marginal_prob method when
+        broadcasting is used"""
+        dev = mock_qutrit_device_with_original_statistics(num_wires)
+        with monkeypatch.context() as m:
+            m.setattr(dev, "_get_batch_size", _working_get_batch_size)
+            res = dev.marginal_prob(probs, wires=wires)
+
+        assert np.allclose(res, marginals, atol=tol, rtol=0)
+
+    @pytest.mark.parametrize("probs, marginals, wires, num_wires", broadcasted_marginal_test_data)
+    def test_correct_broadcasted_marginals_returned_wires_none(
+        self, mock_qutrit_device_with_original_statistics, probs, marginals, wires, num_wires, tol
+    ):
+        """Test that the correct marginals are returned by the marginal_prob method when
+        broadcasting is used"""
+        dev = mock_qutrit_device_with_original_statistics(num_wires)
+
+        res = dev.marginal_prob(probs, wires=None)
+        assert np.allclose(res, probs.reshape((-1, 3**num_wires)), atol=tol, rtol=0)
 
 
 class TestActiveWires:
