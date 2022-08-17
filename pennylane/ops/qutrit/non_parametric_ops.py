@@ -1046,6 +1046,9 @@ class TCNOT(Operation):
     The subspace is given as a keyword argument and determines which two of three single-qutrit basis
     states of the target wire the operation applies to.
 
+    The construction of this operator is based on section 2 of
+    `Di et al. (2012) <https://arxiv.org/abs/1105.5485>`_.
+
     .. note:: The first wire provided corresponds to the **control qutrit**.
 
     **Details:**
@@ -1185,6 +1188,9 @@ class TCNOT(Operation):
 class THadamard(Operation):
     r"""THadamard(wires)
     The ternary Hadamard operator
+
+    The construction of this operator is based on definition 4 and equation 5 from
+    `Yeh et al. (2022) <https://arxiv.org/abs/2204.00552>`_.
 
     .. math:: THadamard = \frac{-i}{\sqrt{3}}\begin{bmatrix}
                     1 & 1 & 1 \\
