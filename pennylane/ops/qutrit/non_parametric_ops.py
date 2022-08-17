@@ -803,6 +803,9 @@ class TH(Operation):
     given as a keyword argument and determines which two of three single-qutrit
     basis states the operation applies to.
 
+    The construction of this operator is based on section 2 of
+    `Di et al. (2012) <https://arxiv.org/abs/1105.5485>`_.
+
     **Details:**
 
     * Number of wires: 1
@@ -930,6 +933,9 @@ class TS(Operation):
 
     The single-qutrit phase gate
 
+    The construction of this operator is based on definition 3 from
+    `Yeh et al. (2022) <https://arxiv.org/abs/2204.00552>`_.
+
     .. math:: TS = \zeta^8 \begin{bmatrix}
                 1 & 0 & 0 \\
                 0 & 1 & 0 \\
@@ -980,6 +986,9 @@ class TS(Operation):
 class TT(Operation):
     r"""TT(wires)
     The single qutrit T gate
+
+    The construction of this operator is based on definition 8 from
+    `Yeh et al. (2022) <https://arxiv.org/abs/2204.00552>`_.
 
     .. math:: TT = \begin{bmatrix}
                 1 & 0 & 0 \\
