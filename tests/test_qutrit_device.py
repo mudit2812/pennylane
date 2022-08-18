@@ -27,8 +27,15 @@ from pennylane.measurements import Sample, Variance, Expectation, Probability, S
 from pennylane.circuit_graph import CircuitGraph
 from pennylane.wires import Wires
 from pennylane.tape import QuantumTape
-from pennylane.measurements import state
-from .test_qubit_device import _working_get_batch_size
+from pennylane.measurements import State
+
+
+def _working_get_batch_size(tensor, expected_shape, expected_size):
+    size = QubitDevice._size(tensor)
+    if QubitDevice._ndim(tensor) > len(expected_shape) or size > expected_size:
+        return size // expected_size
+
+    return None
 
 
 @pytest.fixture(scope="function")
@@ -512,7 +519,7 @@ class TestSampleWithBroadcasting:
         with monkeypatch.context() as m:
             res = dev.sample(obs)
 
-        assert np.array_equal(res, np.array([[-1, 1], [-1, 1], [0, 1]]))
+        assert np.array_equal(res, np.array([[-1, 1], [1, -1], [0, 1]]))
 
     def test_sample_with_no_observable_and_no_wires(
         self, mock_qutrit_device_with_original_statistics, tol
@@ -1357,6 +1364,9 @@ class TestExecution:
         assert dev_1.num_executions == num_evals_1 + num_evals_3
 
 
+# TODO: Add test for broadcasted execution once `default.qutrit` is updated
+
+
 class TestBatchExecution:
     """Tests for the batch_execute method."""
 
@@ -1425,7 +1435,68 @@ class TestBatchExecution:
 class TestShotList:
     """Tests for passing shots as a list"""
 
-    # TODO: Add tests for expval and sample with shot lists after observables are added
+    shot_data = [
+        [[1, 2, 3, 10], [(1, 1), (2, 1), (3, 1), (10, 1)], (4,), 16],
+        [
+            [1, 2, 2, 2, 10, 1, 1, 5, 1, 1, 1],
+            [(1, 1), (2, 3), (10, 1), (1, 2), (5, 1), (1, 3)],
+            (11,),
+            27,
+        ],
+        [[10, 10, 10], [(10, 3)], (3,), 30],
+        [[(10, 3)], [(10, 3)], (3,), 30],
+    ]
+
+    @pytest.mark.parametrize("shot_list,shot_vector,expected_shape,total_shots", shot_data)
+    def test_single_expval(self, shot_list, shot_vector, expected_shape, total_shots):
+        """Test a single expectation value"""
+        dev = qml.device("default.qutrit", wires=2, shots=shot_list)
+
+        @qml.qnode(dev)
+        def circuit(x):
+            qml.TRX(x, wires=0)
+            qml.TAdd(wires=[0, 1])
+            return qml.expval(qml.GellMannObs(3, wires=0) @ qml.GellMannObs(1, wires=1))
+
+        res = circuit(0.5)
+
+        assert res.shape == expected_shape
+        assert circuit.device._shot_vector == shot_vector
+        assert circuit.device.shots == total_shots
+
+    shot_data = [
+        [[1, 2, 3, 10], [(1, 1), (2, 1), (3, 1), (10, 1)], (4, 2), 16],
+        [
+            [1, 2, 2, 2, 10, 1, 1, 5, 1, 1, 1],
+            [(1, 1), (2, 3), (10, 1), (1, 2), (5, 1), (1, 3)],
+            (11, 2),
+            27,
+        ],
+        [[10, 10, 10], [(10, 3)], (3, 2), 30],
+        [[(10, 3)], [(10, 3)], (3, 2), 30],
+    ]
+
+    @pytest.mark.autograd
+    @pytest.mark.parametrize("shot_list,shot_vector,expected_shape,total_shots", shot_data)
+    def test_multiple_expval(self, shot_list, shot_vector, expected_shape, total_shots):
+        """Test multiple expectation values"""
+        dev = qml.device("default.qutrit", wires=2, shots=shot_list)
+
+        @qml.qnode(dev)
+        def circuit(x, y):
+            qml.TRX(x, wires=0)
+            qml.TRY(y, wires=0)
+            qml.TAdd(wires=[0, 1])
+            return qml.expval(qml.GellMannObs(3, wires=0)), qml.expval(qml.GellMannObs(3, wires=1))
+
+        res = circuit(0.5, 0.1)
+
+        assert res.shape == expected_shape
+        assert circuit.device._shot_vector == shot_vector
+        assert circuit.device.shots == total_shots
+
+        # test gradient works
+        # TODO: Add after differentiability of qutrit circuits is implemented
 
     def test_invalid_shot_list(self, mock_qutrit_device_shots):
         """Test exception raised if the shot list is the wrong type"""
@@ -1568,6 +1639,72 @@ class TestShotList:
         # TODO: Uncomment after parametric operations are added for qutrits and decomposition
         # for QutritUnitary exists
         # res = qml.jacobian(circuit, argnum=[0])(pnp.eye(9, dtype=np.complex128))
+
+    shot_data = [
+        [[1, 2, 3, 10], [(1, 1), (2, 1), (3, 1), (10, 1)], [(), (2,), (3,), (10,)], 16],
+        [
+            [1, 2, 2, 2, 10, 1, 1, 5, 1, 1, 1],
+            [(1, 1), (2, 3), (10, 1), (1, 2), (5, 1), (1, 3)],
+            [(), (2,), (2,), (2,), (10,), (), (), (5,), (), (), ()],
+            27,
+        ],
+        [[10, 10, 10], [(10, 3)], [(10,), (10,), (10,)], 30],
+        [[(10, 3)], [(10, 3)], [(10,), (10,), (10,)], 30],
+    ]
+
+    @pytest.mark.parametrize("shot_list,shot_vector,expected_shapes,total_shots", shot_data)
+    def test_sample(self, shot_list, shot_vector, expected_shapes, total_shots):
+        """Test sample returns"""
+        dev = qml.device("default.qutrit", wires=2, shots=shot_list)
+
+        @qml.qnode(dev)
+        def circuit(x, y):
+            qml.TRX(x, wires=0)
+            qml.TRY(y, wires=0)
+            qml.TAdd(wires=[0, 1])
+            return qml.sample(qml.GellMannObs(3, wires=0))
+
+        res = circuit(0.5, 0.1)
+
+        for r, shape in zip(res, expected_shapes):
+            assert r.shape == shape
+
+        assert circuit.device._shot_vector == shot_vector
+        assert circuit.device.shots == total_shots
+
+    shot_data = [
+        [[1, 2, 3, 10], [(1, 1), (2, 1), (3, 1), (10, 1)], [(2,), (2, 2), (3, 2), (10, 2)], 16],
+        [
+            [1, 2, 2, 2, 10, 1, 1, 5, 1, 1, 1],
+            [(1, 1), (2, 3), (10, 1), (1, 2), (5, 1), (1, 3)],
+            [(2,), (2, 2), (2, 2), (2, 2), (10, 2), (2,), (2,), (5, 2), (2,), (2,), (2,)],
+            27,
+        ],
+        [[10, 10, 10], [(10, 3)], [(10, 2), (10, 2), (10, 2)], 30],
+        [[(10, 3)], [(10, 3)], [(10, 2), (10, 2), (10, 2)], 30],
+    ]
+
+    @pytest.mark.parametrize("shot_list,shot_vector,expected_shapes,total_shots", shot_data)
+    def test_multiple_sample(self, shot_list, shot_vector, expected_shapes, total_shots):
+        """Test sample returns"""
+        dev = qml.device("default.qutrit", wires=2, shots=shot_list)
+
+        @qml.qnode(dev)
+        def circuit(x, y):
+            qml.TRX(x, wires=0)
+            qml.TRY(y, wires=0)
+            qml.TAdd(wires=[0, 1])
+            return qml.sample(qml.GellMannObs(3, wires=0)), qml.sample(qml.GellMannObs(3, wires=1))
+
+        res = circuit(0.5, 0.1)
+
+        for r, shape in zip(res, expected_shapes):
+            assert r.shape == shape
+
+        assert circuit.device._shot_vector == shot_vector
+        assert circuit.device.shots == total_shots
+
+    # TODO: Add test for shot list error with parameter broadcasting once default.qutrit is updated
 
 
 class TestUnimplemented:
