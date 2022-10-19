@@ -630,6 +630,10 @@ class Operator(abc.ABC):
         """Custom string to label a specific operator instance."""
         return self._id
 
+    @property
+    def dimension(self):
+        """Number of dimensions per wire."""
+
     @name.setter
     def name(self, value):
         self._name = value
@@ -728,11 +732,12 @@ class Operator(abc.ABC):
         param_string = ",\n".join(_format(p) for p in params)
         return op_label + f"\n({param_string})"
 
-    def __init__(self, *params, wires=None, do_queue=True, id=None):
+    def __init__(self, *params, wires=None, do_queue=True, id=None, dimension=2):
         # pylint: disable=too-many-branches
         self._name = self.__class__.__name__  #: str: name of the operator
         self._id = id
         self.queue_idx = None  #: int, None: index of the Operator in the circuit queue, or None if not in a queue
+        self.dimension = dimension
 
         wires_from_args = False
         if wires is None:
@@ -1440,10 +1445,10 @@ class Operation(Operator):
             base_label += "⁻¹"
         return super().label(decimals=decimals, base_label=base_label, cache=cache)
 
-    def __init__(self, *params, wires=None, do_queue=True, id=None):
+    def __init__(self, *params, wires=None, do_queue=True, id=None, dimension=2):
 
         self._inverse = False
-        super().__init__(*params, wires=wires, do_queue=do_queue, id=id)
+        super().__init__(*params, wires=wires, do_queue=do_queue, id=id, dimension=dimension)
 
         # check the grad_recipe validity
         if self.grad_recipe is None:
