@@ -53,6 +53,9 @@ class TShift(Operation):
     num_params = 0
     """int: Number of trainable parameters that the operator depends on."""
 
+    def __init__(self, wires, do_queue=True, id=None):
+        super().__init(wires=wires, do_queue=do_queue, id=id, level=3)
+
     @staticmethod
     def compute_matrix():
         r"""Representation of the operator as a canonical matrix in the computational basis (static method).
@@ -143,6 +146,9 @@ class TClock(Operation):
 
     num_params = 0
     """int: Number of trainable parameters that the operator depends on."""
+
+    def __init__(self, wires, do_queue=True, id=None):
+        super().__init(wires=wires, do_queue=do_queue, id=id, level=3)
 
     @staticmethod
     def compute_matrix():
@@ -242,6 +248,9 @@ class TAdd(Operation):
 
     num_params = 0
     """int: Number of trainable parameters that the operator depends on."""
+
+    def __init__(self, wires, do_queue=True, id=None):
+        super().__init(wires=wires, do_queue=do_queue, id=id, level=3)
 
     @staticmethod
     def compute_matrix():
@@ -356,6 +365,9 @@ class TSWAP(Operation):
     num_wires = 2
     num_params = 0
     """int: Number of trainable parameters that the operator depends on."""
+
+    def __init__(self, wires, do_queue=True, id=None):
+        super().__init(wires=wires, do_queue=do_queue, id=id, level=3)
 
     def label(self, decimals=None, base_label=None, cache=None):
         return base_label or "TSWAP"

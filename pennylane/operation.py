@@ -2026,7 +2026,7 @@ class Tensor(Observable):
             U_list.append(mats[0])
 
         mat_size = np.prod([np.shape(mat)[0] for mat in U_list])
-        wire_size = 2 ** len(self.wires)
+        wire_size = self.level ** len(self.wires)
         if mat_size != wire_size:
             if partial_overlap:
                 warnings.warn(

@@ -63,7 +63,8 @@ class Hermitian(Observable):
     _eigs = {}
 
     def __init__(self, A, wires, do_queue=True, id=None):
-        super().__init__(A, wires=wires, do_queue=do_queue, id=id)
+        level = 3 if isinstance(self, qml.THermitian) else 2
+        super().__init__(A, wires=wires, do_queue=do_queue, id=id, level=level)
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(decimals=decimals, base_label=base_label or "𝓗", cache=cache)

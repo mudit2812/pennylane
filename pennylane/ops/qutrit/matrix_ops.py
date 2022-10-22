@@ -93,7 +93,7 @@ class QutritUnitary(Operation):
                     UserWarning,
                 )
 
-        super().__init__(*params, wires=wires, do_queue=do_queue)
+        super().__init__(*params, wires=wires, do_queue=do_queue, level=3)
 
     @staticmethod
     def compute_matrix(U):  # pylint: disable=arguments-differ

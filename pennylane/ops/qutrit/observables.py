@@ -211,7 +211,7 @@ class GellMann(Observable):
 
         self.hyperparameters["index"] = index
 
-        super().__init__(wires=wires, do_queue=do_queue, id=id)
+        super().__init__(wires=wires, do_queue=do_queue, id=id, level=3)
 
     def label(self, decimals=None, base_label=None, cache=None):
         return base_label or "GellMann(" + str(self.hyperparameters["index"]) + ")"

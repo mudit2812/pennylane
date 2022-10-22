@@ -101,7 +101,7 @@ class TRX(Operation):
         self._hyperparameters = {
             "subspace": self.subspace,
         }
-        super().__init__(phi, wires=wires, do_queue=do_queue, id=id)
+        super().__init__(phi, wires=wires, do_queue=do_queue, id=id, level=3)
 
     @property
     def subspace(self):
@@ -249,7 +249,7 @@ class TRY(Operation):
         self._hyperparameters = {
             "subspace": self.subspace,
         }
-        super().__init__(phi, wires=wires, do_queue=do_queue, id=id)
+        super().__init__(phi, wires=wires, do_queue=do_queue, id=id, level=3)
 
     @property
     def subspace(self):
