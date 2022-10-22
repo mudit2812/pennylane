@@ -631,8 +631,9 @@ class Operator(abc.ABC):
         return self._id
 
     @property
-    def dimension(self):
-        """Number of dimensions per wire."""
+    def level(self):
+        """Number of levels each wire can have."""
+        return self._level
 
     @name.setter
     def name(self, value):
@@ -732,12 +733,12 @@ class Operator(abc.ABC):
         param_string = ",\n".join(_format(p) for p in params)
         return op_label + f"\n({param_string})"
 
-    def __init__(self, *params, wires=None, do_queue=True, id=None, dimension=2):
+    def __init__(self, *params, wires=None, do_queue=True, id=None, level=2):
         # pylint: disable=too-many-branches
         self._name = self.__class__.__name__  #: str: name of the operator
         self._id = id
         self.queue_idx = None  #: int, None: index of the Operator in the circuit queue, or None if not in a queue
-        self.dimension = dimension
+        self._level = level
 
         wires_from_args = False
         if wires is None:
@@ -1445,10 +1446,10 @@ class Operation(Operator):
             base_label += "⁻¹"
         return super().label(decimals=decimals, base_label=base_label, cache=cache)
 
-    def __init__(self, *params, wires=None, do_queue=True, id=None, dimension=2):
+    def __init__(self, *params, wires=None, do_queue=True, id=None, level=2):
 
         self._inverse = False
-        super().__init__(*params, wires=wires, do_queue=do_queue, id=id, dimension=dimension)
+        super().__init__(*params, wires=wires, do_queue=do_queue, id=id, level=level)
 
         # check the grad_recipe validity
         if self.grad_recipe is None:
@@ -1716,6 +1717,7 @@ class Tensor(Observable):
         self._eigvals_cache = None
         self.obs: List[Observable] = []
         self._args = args
+        self._level = args[0].level
         self.queue(init=True)
 
     def label(self, decimals=None, base_label=None, cache=None):
@@ -1759,6 +1761,11 @@ class Tensor(Observable):
 
         for o in constituents:
 
+            if o.level != self.level:
+                raise ValueError(
+                    "Can only perform tensor products between observables with the same level."
+                )
+
             if init:
                 if isinstance(o, Tensor):
                     self.obs.extend(o.obs)
@@ -1776,6 +1783,7 @@ class Tensor(Observable):
         cls = self.__class__
         copied_op = cls.__new__(cls)  # pylint: disable=no-value-for-parameter
         copied_op.obs = self.obs.copy()
+        copied_op._level = self.level
         copied_op._eigvals_cache = self._eigvals_cache
         return copied_op
 
@@ -1862,6 +1870,11 @@ class Tensor(Observable):
         return 1 + max(o.arithmetic_depth for o in self.obs)
 
     def __matmul__(self, other):
+        if other.level != self.level:
+            raise ValueError(
+                "Can only perform tensor products between observables with the same level."
+            )
+
         if isinstance(other, Tensor):
             self.obs.extend(other.obs)
 
@@ -1880,7 +1893,13 @@ class Tensor(Observable):
         return self
 
     def __rmatmul__(self, other):
+
         if isinstance(other, Observable):
+            if other.level != self.level:
+                raise ValueError(
+                    "Can only perform tensor products between observables with the same level."
+                )
+
             self.obs[:0] = [other]
             QueuingManager.update_info(self, owns=tuple(self.obs))
             QueuingManager.update_info(other, owner=self)
