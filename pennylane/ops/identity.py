@@ -46,15 +46,15 @@ class Identity(CVObservable, Operation):
 
     ev_order = 1
 
-    def __init__(self, *params, wires=None, do_queue=True, id=None):
-        super().__init__(*params, wires=wires, do_queue=do_queue, id=id)
+    def __init__(self, *params, wires=None, do_queue=True, id=None, level=2):
+        super().__init__(*params, wires=wires, do_queue=do_queue, id=id, level=level)
         self._hyperparameters = {"n_wires": len(self.wires)}
 
     def label(self, decimals=None, base_label=None, cache=None):
         return base_label or "I"
 
     @staticmethod
-    def compute_eigvals(n_wires=1):  # pylint: disable=arguments-differ
+    def compute_eigvals(n_wires=1, level=2):  # pylint: disable=arguments-differ
         r"""Eigenvalues of the operator in the computational basis (static method).
 
         If :attr:`diagonalizing_gates` are specified and implement a unitary :math:`U`,
@@ -76,11 +76,11 @@ class Identity(CVObservable, Operation):
         >>> print(qml.Identity.compute_eigvals())
         [ 1 1]
         """
-        return qml.math.ones(2**n_wires)
+        return qml.math.ones(level**n_wires)
 
     @staticmethod
     @lru_cache()
-    def compute_matrix(n_wires=1):  # pylint: disable=arguments-differ
+    def compute_matrix(n_wires=1, level=2):  # pylint: disable=arguments-differ
         r"""Representation of the operator as a canonical matrix in the computational basis (static method).
 
         The canonical matrix is the textbook matrix representation that does not consider wires.
@@ -97,12 +97,12 @@ class Identity(CVObservable, Operation):
         [[1. 0.]
          [0. 1.]]
         """
-        return qml.math.eye(int(2**n_wires))
+        return qml.math.eye(int(level**n_wires))
 
     @staticmethod
     @lru_cache()
-    def compute_sparse_matrix(n_wires=1):  # pylint: disable=arguments-differ
-        return sparse.eye(int(2**n_wires), format="csr")
+    def compute_sparse_matrix(n_wires=1, level=2):  # pylint: disable=arguments-differ
+        return sparse.eye(int(level**n_wires), format="csr")
 
     @staticmethod
     def _heisenberg_rep(p):
@@ -110,7 +110,7 @@ class Identity(CVObservable, Operation):
 
     @staticmethod
     def compute_diagonalizing_gates(
-        wires, n_wires=1
+        wires, n_wires=1, level=2
     ):  # pylint: disable=arguments-differ,unused-argument
         r"""Sequence of gates that diagonalize the operator in the computational basis (static method).
 
@@ -137,7 +137,9 @@ class Identity(CVObservable, Operation):
         return []
 
     @staticmethod
-    def compute_decomposition(wires, n_wires=1):  # pylint:disable=arguments-differ,unused-argument
+    def compute_decomposition(
+        wires, n_wires=1, level=2
+    ):  # pylint:disable=arguments-differ,unused-argument
         r"""Representation of the operator as a product of other operators (static method).
 
         .. math:: O = O_1 O_2 \dots O_n.
@@ -164,7 +166,7 @@ class Identity(CVObservable, Operation):
         return Identity.compute_matrix(*params)
 
     def adjoint(self):
-        return Identity(wires=self.wires)
+        return Identity(wires=self.wires, level=self.level)
 
     def pow(self, _):
-        return [Identity(wires=self.wires)]
+        return [Identity(wires=self.wires, level=self.level)]
