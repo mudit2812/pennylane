@@ -17,9 +17,13 @@ Defines a metaclass for automatic integration of any ``Operator`` with plxpr pro
 See ``explanations.md`` for technical explanations of how this works.
 """
 from abc import ABCMeta
+from collections import Counter
 from inspect import Signature, signature
 
 from .switches import enabled
+
+op_counts = Counter()
+meas_counts = Counter()
 
 
 def _stop_autograph(f):
@@ -89,6 +93,14 @@ class CaptureMeta(type):
     def __call__(cls, *args, **kwargs):
         # this method is called everytime we want to create an instance of the class.
         # default behavior uses __new__ then __init__
+
+        from pennylane.operation import Operator
+        from pennylane.measurements import MeasurementProcess
+
+        if issubclass(cls, Operator):
+            op_counts[cls] += 1
+        elif issubclass(cls, MeasurementProcess):
+            meas_counts[cls] += 1
 
         if enabled():
             # when tracing is enabled, we want to
