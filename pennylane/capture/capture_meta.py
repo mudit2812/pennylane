@@ -22,8 +22,8 @@ from inspect import Signature, signature
 
 from .switches import enabled
 
-op_counts = Counter()
-meas_counts = Counter()
+import pennylane.capture_poc.capture_collector as capture_collector # Import the collector
+
 
 
 def _stop_autograph(f):
@@ -91,16 +91,13 @@ class CaptureMeta(type):
 
     @_stop_autograph
     def __call__(cls, *args, **kwargs):
-        # this method is called everytime we want to create an instance of the class.
-        # default behavior uses __new__ then __init__
-
+        # ... existing code ...
         from pennylane.operation import Operator
         from pennylane.measurements import MeasurementProcess
-
         if issubclass(cls, Operator):
-            op_counts[cls] += 1
+            capture_collector.increment_operator_count(cls.__name__) # Pass the class name as string
         elif issubclass(cls, MeasurementProcess):
-            meas_counts[cls] += 1
+            capture_collector.increment_measurement_count(cls.__name__) # Pass the class name as string
 
         if enabled():
             # when tracing is enabled, we want to
