@@ -64,17 +64,16 @@ def initialize_capture_poc():
     """Initializes the capture system, checks opt-out, and sets up save hooks."""
     global _telemetry_enabled # <--- Declare as global to modify
 
-    if os.environ.get("PENNYLANETELEMETRY", "").lower() == "off":
-        _telemetry_enabled = False
-        print("PennyLane Capture POC: Opted out via PENNYLANETELEMETRY=off.")
+    if os.environ.get("PENNYLANETELEMETRY", "").lower() == "on":
+        _telemetry_enabled = True
+        print("PennyLane Capture POC: Enabled. Set PENNYLANETELEMETRY=off to disable.")
+
+        _load_counters_from_disk() # Load existing data here
+
+        atexit.register(_save_counters_to_disk)
         return
 
-    _telemetry_enabled = True
-    print("PennyLane Capture POC: Enabled. Set PENNYLANETELEMETRY=off to disable.")
-
-    _load_counters_from_disk() # Load existing data here
-
-    atexit.register(_save_counters_to_disk)
+    print("PennyLane Capture POC: Opted out via PENNYLANETELEMETRY=off.")
 
 # --- Expose public interface for other modules to increment ---
 def increment_operator_count(op_class_name):
