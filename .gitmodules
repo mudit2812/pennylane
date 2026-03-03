@@ -1,5 +1,5 @@
 [submodule "config"]
-    path = config
-    url = https://github.com/mudit2812/pennylane-dev-config.git
+	path = config
+	url = https://github.com/mudit2812/pennylane-dev-config.git
     shallow = true
     ignore = dirty
